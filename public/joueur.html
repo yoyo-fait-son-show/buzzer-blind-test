@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#170b36">
+<title>Blind test XXL</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --night:#170b36; --plum:#26104f; --plum-2:#331a66; --line:#4a2d86;
+  --red:#f01e3a; --red-deep:#9e0c22; --gold:#ffc23c; --cream:#fff4e2;
+  --muted:#b8a8d8; --ok:#3ddc8f; --ko:#ff8a8a;
+  --display:'Bungee', 'Impact', system-ui, sans-serif;
+  --body:'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--night);
+  background-image:radial-gradient(120% 70% at 50% -15%, #40208a 0%, rgba(64,32,138,0) 60%);
+  background-attachment:fixed;
+  color:var(--cream); font-family:var(--body); font-size:17px; line-height:1.45;
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  min-height:100dvh;
+}
+button,input{font:inherit;color:inherit}
+.screen{display:none;min-height:100dvh;padding:calc(env(safe-area-inset-top) + 22px) 18px calc(env(safe-area-inset-bottom) + 22px);max-width:520px;margin:0 auto;flex-direction:column}
+.screen.on{display:flex}
+
+/* ---------- Règles & inscription ---------- */
+.marquee{font-family:var(--display);font-size:clamp(40px,13vw,64px);line-height:.92;letter-spacing:.5px;color:var(--gold);text-shadow:0 3px 0 var(--red-deep),0 0 28px rgba(255,194,60,.35);margin:6px 0 4px}
+.marquee small{display:block;font-size:.42em;color:var(--cream);text-shadow:none;letter-spacing:1px;margin-bottom:6px}
+.rules{margin:22px 0 18px;font-size:18px}
+.rules p+p{margin-top:12px}
+.rules strong{color:var(--gold);font-weight:800}
+.rules .shout{font-family:var(--display);font-weight:400;color:var(--cream);font-size:.95em;letter-spacing:.3px}
+.note{background:var(--plum);border-left:4px solid var(--red);border-radius:6px;padding:10px 12px;font-size:15px;color:var(--muted);margin-bottom:22px}
+.grow{flex:1}
+.btn{display:block;width:100%;border:none;border-radius:14px;padding:17px 18px;font-weight:800;font-size:19px;cursor:pointer;background:var(--red);color:#fff;box-shadow:0 5px 0 var(--red-deep);transition:transform .06s,box-shadow .06s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--red-deep)}
+.btn:disabled{opacity:.5}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:2px dashed var(--line);font-weight:600;font-size:16px;padding:13px}
+.btn:focus-visible,.field:focus-visible,.link:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;margin:8px 0 6px}
+.sub{color:var(--muted);margin-bottom:20px}
+.field{width:100%;background:var(--plum);border:2px solid var(--line);border-radius:12px;padding:15px 14px;font-size:19px;font-weight:600;outline:none}
+.field:focus{border-color:var(--gold)}
+.field::placeholder{color:#8a7bb0;font-weight:400}
+.players{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.prow{display:flex;gap:8px;align-items:center}
+.prow .num{width:26px;flex:none;color:var(--muted);font-weight:700;text-align:right}
+.prow .x{flex:none;width:44px;height:44px;border-radius:10px;border:none;background:var(--plum);color:var(--muted);font-size:20px;cursor:pointer}
+.err{color:var(--ko);font-weight:600;min-height:24px;margin:10px 0}
+.back{background:none;border:none;color:var(--muted);font-size:16px;padding:6px 0;cursor:pointer;align-self:flex-start;margin-bottom:6px}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ---------- Jeu ---------- */
+#s-game{padding-bottom:calc(env(safe-area-inset-bottom) + 84px)}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.top .name{flex:1;min-width:0}
+.top .name b{display:block;font-size:20px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .name span{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.score{flex:none;text-align:right;background:var(--plum);border-radius:12px;padding:6px 12px;min-width:76px}
+.score b{display:block;font-family:var(--display);font-weight:400;font-size:22px;line-height:1.1;color:var(--gold)}
+.score span{font-size:13px;color:var(--muted)}
+.conn{font-size:14px;text-align:center;color:var(--night);background:var(--gold);border-radius:8px;padding:4px 8px;margin:4px 0;display:none}
+.conn.on{display:block}
+
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:6px 0}
+.round{font-weight:700;color:var(--muted);font-size:15px;height:22px}
+.buzz-wrap{position:relative;width:min(76vw,44vh,380px);aspect-ratio:1;margin:8px 0 18px}
+.buzz-base{position:absolute;inset:-5% -5% -9% -5%;border-radius:50%;background:radial-gradient(circle at 50% 40%,#3a2370 0%,#1b0d3d 70%);box-shadow:0 14px 30px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.08)}
+.buzzer{
+  position:absolute;inset:0;border-radius:50%;border:none;cursor:pointer;
+  background:radial-gradient(circle at 36% 28%,#ff8494 0%,#f2273f 30%,#c4122b 68%,#860618 100%);
+  box-shadow:0 12px 0 #5c0412,0 12px 0 2px #2a0712,inset 0 -14px 28px rgba(0,0,0,.35),inset 0 10px 22px rgba(255,255,255,.22);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;
+  transition:transform .05s ease-out, box-shadow .05s ease-out, filter .25s;
+}
+.buzzer .lbl{font-family:var(--display);font-size:clamp(34px,11vw,56px);letter-spacing:1px;text-shadow:0 3px 0 rgba(90,0,15,.6)}
+.buzzer .time{font-family:var(--body);font-weight:800;font-stretch:80%;font-variant-numeric:tabular-nums;font-size:clamp(40px,14vw,68px);line-height:1;text-shadow:0 3px 0 rgba(90,0,15,.6)}
+.buzzer .unit{font-weight:700;font-size:18px;opacity:.9}
+.buzzer.pressed{transform:translateY(10px);box-shadow:0 2px 0 #5c0412,0 2px 0 2px #2a0712,inset 0 -8px 20px rgba(0,0,0,.4),inset 0 6px 14px rgba(255,255,255,.18)}
+.buzzer.off{filter:grayscale(.85) brightness(.5);cursor:default}
+.buzzer.done{filter:saturate(.9)}
+.buzzer.go::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:6px solid var(--red);opacity:0;animation:ring 0.9s ease-out infinite}
+@keyframes ring{0%{transform:scale(.92);opacity:.9}100%{transform:scale(1.18);opacity:0}}
+.status{text-align:center;min-height:84px;max-width:420px}
+.status .big{font-family:var(--display);font-size:26px;line-height:1.1;margin-bottom:6px}
+.status .big.red{color:#ff5468}
+.status .big.gold{color:var(--gold)}
+.status .big.ok{color:var(--ok)}
+.status .big.ko{color:var(--ko)}
+.status .big.rank{font-family:var(--body);font-weight:800;font-size:30px;letter-spacing:-.2px}
+.status p{color:var(--muted);font-size:16px}
+.podium{width:100%;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.prow2{display:flex;align-items:center;gap:10px;background:var(--plum);border-radius:10px;padding:8px 12px}
+.prow2 .m{font-size:22px;width:30px;text-align:center;flex:none}
+.prow2 .n{flex:1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow2 .v{font-weight:800;font-variant-numeric:tabular-nums;color:var(--gold)}
+.prow2.me{outline:2px solid var(--gold)}
+
+/* ---------- Classement ---------- */
+.board{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.mine{background:var(--plum-2);border:2px solid var(--gold);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-top:4px}
+.mine .r{font-family:var(--display);font-size:34px;color:var(--gold);line-height:1}
+.mine .t{flex:1}
+.mine .t b{display:block;font-size:18px}
+.mine .t span{color:var(--muted);font-size:15px}
+.empty{color:var(--muted);text-align:center;padding:26px 10px;background:var(--plum);border-radius:12px}
+.link{background:none;border:none;color:#8a7bb0;font-size:14px;text-decoration:underline;cursor:pointer;margin:18px auto 0;display:block}
+
+/* ---------- Onglets ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:rgba(23,11,54,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.tabs.on{display:flex}
+.tabs button{flex:1;border:none;border-radius:12px;padding:12px;background:transparent;color:var(--muted);font-weight:800;font-size:16px;cursor:pointer}
+.tabs button.cur{background:var(--plum-2);color:var(--cream)}
+@media (prefers-reduced-motion: reduce){.buzzer.go::after{animation:none;opacity:.8;transform:scale(1.06)}}
+</style>
+</head>
+<body>
+
+<!-- 1. Règles -->
+<section class="screen on" id="s-rules">
+  <h1 class="marquee"><small>Bienvenue au</small>Blind test XXL</h1>
+  <div class="rules">
+    <p>Bienvenue au blind test XXL de <strong>BBV</strong>. Ce blind test sera fait de la manière suivante : <strong>plus tu es rapide, plus tu gagnes de points.</strong> De la compétition à l'état pur.</p>
+    <p>Des extraits de musique vont passer. Au moment où la musique s'arrête, <span class="shout">tape sur le buzzer</span> si tu as une réponse (les plus rapides seront désignés).</p>
+    <p>Bonne chance ! Et surtout n'oublie pas de <span class="shout">kiffer</span> 🫶</p>
+  </div>
+  <div class="note">Buzzer avant que la musique s'arrête, c'est un faux départ : ton équipe est bloquée pour cet extrait.</div>
+  <div class="err" id="rules-msg"></div>
+  <div class="grow"></div>
+  <button class="btn" id="go-team">J'ai compris, j'inscris mon équipe</button>
+</section>
+
+<!-- 2. Équipe -->
+<section class="screen" id="s-team">
+  <button class="back" data-go="rules">‹ Règles</button>
+  <h2>Nom de ton équipe</h2>
+  <p class="sub">Un seul téléphone par équipe : c'est lui qui aura le buzzer.</p>
+  <input class="field" id="team-name" maxlength="30" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ex. Les Rois du Refrain">
+  <div class="err" id="team-err"></div>
+  <div class="grow"></div>
+  <button class="btn" id="go-players">Suivant</button>
+</section>
+
+<!-- 3. Joueurs -->
+<section class="screen" id="s-players">
+  <button class="back" data-go="team">‹ Nom d'équipe</button>
+  <h2>Qui joue ?</h2>
+  <p class="sub" id="players-sub">Ajoute le prénom de chaque joueur.</p>
+  <div class="players" id="players"></div>
+  <button class="btn ghost" id="add-player">+ Ajouter un joueur</button>
+  <div class="err" id="players-err"></div>
+  <div class="grow"></div>
+  <button class="btn" id="register">Valider l'équipe</button>
+</section>
+
+<!-- 4. Jeu -->
+<section class="screen" id="s-game">
+  <div class="top">
+    <div class="name"><b id="g-team">…</b><span id="g-players"></span></div>
+    <div class="score"><b id="g-points">0</b><span id="g-rank">pts</span></div>
+  </div>
+  <div class="conn" id="conn">Reconnexion…</div>
+
+  <div id="tab-buzz" class="stage">
+    <div class="round" id="g-round"></div>
+    <div class="buzz-wrap">
+      <div class="buzz-base"></div>
+      <button class="buzzer off" id="buzzer" aria-label="Buzzer"><span class="lbl">Buzz</span></button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="podium" id="round-top"></div>
+  </div>
+
+  <div id="tab-board" style="display:none">
+    <h2>Classement général</h2>
+    <div class="mine" id="b-mine"></div>
+    <div class="board" id="b-list"></div>
+    <button class="link" id="logout">Ce n'est pas ton équipe ? Se déconnecter</button>
+  </div>
+</section>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="buzz" class="cur">Buzzer</button>
+  <button data-tab="board">Classement</button>
+</nav>
+
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} },
+};
+const TOKEN_KEY = 'bbv-buzzer-token';
+const MEDALS = ['🥇','🥈','🥉'];
+
+let ws = null, connected = false, backoff = 500, waiting = false;
+let token = store.get(TOKEN_KEY);
+let team = null, st = null, lobby = null;
+let localTap = null;     // { round, t } : tap fait sur ce téléphone
+let pendingBuzz = null;  // buzz à envoyer dès la reconnexion
+let tab = 'buzz';
+let maxPlayers = 8;
+
+// ---------- Synchronisation d'horloge avec le serveur ----------
+// Le temps de réaction est calculé avec l'heure du serveur, mesurée
+// sur le téléphone : la latence du réseau (4G, Wi‑Fi) ne pénalise personne.
+const sync = { samples: [], offset: 0, ready: false, reset: false };
+function sendRaw(o){ if (ws && ws.readyState === 1) { ws.send(JSON.stringify(o)); return true; } return false; }
+function ping(){ sendRaw({ type: 'ping', c: performance.now() }); }
+function burst(n = 6){ for (let i = 0; i < n; i++) setTimeout(ping, i * 150); }
+function onPong(m){
+  const t1 = performance.now(), rtt = t1 - m.c;
+  if (!(rtt >= 0 && rtt < 5000)) return;
+  if (sync.reset) { sync.samples = []; sync.reset = false; }
+  sync.samples.push({ rtt, off: m.s - (m.c + rtt / 2) });
+  if (sync.samples.length > 20) sync.samples.shift();
+  let best = sync.samples[0];
+  for (const s of sync.samples) if (s.rtt < best.rtt) best = s;
+  sync.offset = best.off; sync.ready = true;
+}
+const serverNow = (at) => (at ?? performance.now()) + sync.offset;
+setInterval(ping, 8000);
+
+// ---------- Écran toujours allumé pendant le jeu ----------
+let wakeLock = null;
+async function requestWake(){
+  try { if ('wakeLock' in navigator && !wakeLock && team) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { sync.reset = true; burst(); requestWake(); }
+});
+
+// ---------- Connexion ----------
+function connect(){
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => {
+    connected = true; backoff = 500;
+    sendRaw({ type: 'hello', role: 'player', token });
+    burst();
+    render();
+  };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    switch (m.type) {
+      case 'pong': onPong(m); break;
+      case 'welcome':
+        waiting = false;
+        if (m.team) { team = m.team; if (current !== 'game') go('game'); }
+        else if (token && m.wait) {
+          // Le serveur vient de redémarrer : on garde l'équipe et on réessaie
+          waiting = true; render();
+          setTimeout(() => sendRaw({ type: 'hello', role: 'player', token }), 2000);
+        }
+        else if (token) { forget("Ton inscription n'est plus active : inscris ton équipe à nouveau."); }
+        if (pendingBuzz && team) { sendRaw(pendingBuzz); pendingBuzz = null; }
+        break;
+      case 'registered':
+        token = m.token; store.set(TOKEN_KEY, token); team = m.team;
+        $('#register').disabled = false;
+        go('game');
+        break;
+      case 'error':
+        $('#register').disabled = false;
+        if (m.code === 'name') { go('team'); $('#team-err').textContent = m.message; }
+        else if (current === 'players') $('#players-err').textContent = m.message;
+        else $('#team-err').textContent = m.message;
+        break;
+      case 'lobby':
+        lobby = m; maxPlayers = m.maxPlayers || 8;
+        $('#rules-msg').textContent = m.registrationOpen ? '' : 'Les inscriptions sont fermées pour le moment.';
+        break;
+      case 'state':
+        // Nouvel extrait : on resynchronise l'horloge juste avant le moment qui compte
+        if (m.phase === 'armed' && (!st || st.roundId !== m.roundId)) burst(4);
+        st = m; if (m.me) team = { ...team, ...m.me }; render(); break;
+      case 'kicked': forget("Ton inscription n'est plus active : inscris ton équipe à nouveau."); break;
+    }
+  };
+  ws.onclose = () => {
+    connected = false; render();
+    setTimeout(connect, backoff); backoff = Math.min(backoff * 1.6, 5000);
+  };
+}
+
+function forget(msg){
+  token = null; store.del(TOKEN_KEY); team = null; st = null; localTap = null;
+  go('rules'); $('#rules-msg').textContent = msg || '';
+}
+
+// ---------- Navigation ----------
+let current = 'rules';
+function go(name){
+  current = name;
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === 's-' + name));
+  $('#tabs').classList.toggle('on', name === 'game');
+  if (name === 'team') setTimeout(() => $('#team-name').focus(), 50);
+  if (name === 'players' && !$('#players').children.length) { addPlayer(); }
+  if (name === 'game') { requestWake(); render(); }
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+$('#go-team').addEventListener('click', () => go('team'));
+$('#go-players').addEventListener('click', toPlayers);
+$('#team-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') toPlayers(); });
+function toPlayers(){
+  const n = $('#team-name').value.trim();
+  if (n.length < 2) { $('#team-err').textContent = "Le nom d'équipe doit faire au moins 2 caractères."; return; }
+  $('#team-err').textContent = '';
+  go('players');
+}
+
+function addPlayer(){
+  const list = $('#players');
+  if (list.children.length >= maxPlayers) return;
+  const row = document.createElement('div');
+  row.className = 'prow';
+  row.innerHTML = '<span class="num"></span><input class="field" maxlength="24" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Prénom"><button class="x" aria-label="Retirer ce joueur">×</button>';
+  row.querySelector('.x').addEventListener('click', () => { if (list.children.length > 1) { row.remove(); numberPlayers(); } else row.querySelector('input').value = ''; });
+  row.querySelector('input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); if (row === list.lastElementChild && list.children.length < maxPlayers && e.target.value.trim()) { addPlayer(); } }
+  });
+  list.appendChild(row);
+  numberPlayers();
+  row.querySelector('input').focus();
+}
+function numberPlayers(){
+  const rows = [...$('#players').children];
+  rows.forEach((r, i) => { r.querySelector('.num').textContent = (i + 1) + '.'; });
+  $('#add-player').style.display = rows.length >= maxPlayers ? 'none' : '';
+  $('#players-sub').textContent = `Ajoute le prénom de chaque joueur (${maxPlayers} max).`;
+}
+$('#add-player').addEventListener('click', addPlayer);
+$('#register').addEventListener('click', () => {
+  const players = [...$('#players').querySelectorAll('input')].map((i) => i.value.trim()).filter(Boolean);
+  if (!players.length) { $('#players-err').textContent = 'Ajoute au moins un joueur.'; return; }
+  $('#players-err').textContent = '';
+  if (!connected) { $('#players-err').textContent = 'Pas de connexion pour le moment, réessaie dans quelques secondes.'; return; }
+  $('#register').disabled = true;
+  sendRaw({ type: 'register', name: $('#team-name').value, players });
+});
+
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('cur', x === b));
+  $('#tab-buzz').style.display = tab === 'buzz' ? '' : 'none';
+  $('#tab-board').style.display = tab === 'board' ? '' : 'none';
+  render();
+}));
+$('#logout').addEventListener('click', () => {
+  if (!confirm("Te déconnecter de cette équipe ? Le buzzer ne marchera plus sur ce téléphone.")) return;
+  sendRaw({ type: 'logout' });
+  forget('');
+});
+
+// ---------- Buzzer ----------
+const buzzer = $('#buzzer');
+function canBuzz(){
+  return !!(team && st && (st.phase === 'armed' || st.phase === 'open') && !st.my && !(localTap && localTap.round === st.roundId));
+}
+buzzer.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (!canBuzz()) return;
+  // Heure exacte du toucher (pas celle du traitement)
+  const at = (e.timeStamp > 0 && Math.abs(performance.now() - e.timeStamp) < 2000) ? e.timeStamp : performance.now();
+  const t = sync.ready ? serverNow(at) : null;
+  localTap = { round: st.roundId, t };
+  const msg = { type: 'buzz', round: st.roundId, t };
+  if (!sendRaw(msg)) pendingBuzz = msg;
+  try { navigator.vibrate && navigator.vibrate(70); } catch {}
+  buzzer.classList.add('pressed');
+  setTimeout(() => buzzer.classList.remove('pressed'), 160);
+  render();
+});
+buzzer.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---------- Affichage ----------
+const fmt = (ms) => (ms / 1000).toFixed(3).replace('.', ',');
+const ord = (n) => n === 1 ? '1er' : n + 'e';
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+function setBuzzer(cls, html){
+  buzzer.className = 'buzzer ' + cls;
+  if (buzzer.dataset.html !== html) { buzzer.innerHTML = html; buzzer.dataset.html = html; }
+}
+function setStatus(big, cls, p){
+  const html = (big ? `<div class="big ${cls || ''}">${big}</div>` : '') + (p ? `<p>${p}</p>` : '');
+  const el = $('#status');
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+}
+
+function render(){
+  $('#conn').classList.toggle('on', (!connected || waiting) && current === 'game');
+  $('#conn').textContent = waiting ? 'Reconnexion à la partie…' : 'Reconnexion…';
+  if (current !== 'game') return;
+  if (team) {
+    $('#g-team').textContent = team.name || '…';
+    $('#g-players').textContent = (team.players || []).join(', ');
+  }
+  const me = st && st.me;
+  $('#g-points').textContent = me ? me.points : 0;
+  const unit = me && me.points > 1 ? 'pts' : 'pt';
+  $('#g-rank').textContent = me && me.points > 0 && me.rank ? `${unit} · ${ord(me.rank)}${me.tied ? ' ex æquo' : ''}` : unit;
+
+  if (tab === 'board') return renderBoard();
+
+  if (!st) { setBuzzer('off', '<span class="lbl">Buzz</span>'); setStatus('', '', 'Connexion à la partie…'); $('#round-top').innerHTML = ''; $('#g-round').textContent = ''; return; }
+
+  $('#g-round').textContent = st.roundNo ? `Extrait ${st.roundNo}` : '';
+  const my = st.my;
+  const tapped = localTap && localTap.round === st.roundId;
+  let topHtml = '';
+
+  if (my && my.state === 'valid') {
+    const medal = my.rank <= 3 ? MEDALS[my.rank - 1] + ' ' : '';
+    setBuzzer('done', `<span class="time">${fmt(my.reaction)}</span><span class="unit">secondes</span>`);
+    if (my.verdict === 'ok') setStatus(`Bonne réponse ! +${my.pts} pt${my.pts > 1 ? 's' : ''}`, 'ok', `${medal}${ord(my.rank)} plus rapide sur cet extrait`);
+    else if (my.verdict === 'ko') setStatus('Mauvaise réponse', 'ko', `${medal}${ord(my.rank)} plus rapide… mais raté cette fois`);
+    else setStatus(`${medal}${ord(my.rank)} plus rapide`, 'rank' + (my.rank <= 3 ? ' gold' : ''), `sur ${st.buzzCount} équipe${st.buzzCount > 1 ? 's' : ''} qui ${st.buzzCount > 1 ? 'ont' : 'a'} buzzé`);
+  } else if (my && my.state === 'false') {
+    setBuzzer('off', '<span class="lbl">✋</span>');
+    setStatus('Trop tôt !', 'red', 'Faux départ : ton équipe est bloquée pour cet extrait.');
+  } else if (my && my.state === 'pending') {
+    setBuzzer('done', '<span class="lbl">…</span>');
+    setStatus('Buzz enregistré', '', 'On vérifie si la musique était bien coupée…');
+  } else if (tapped) {
+    // Retour immédiat avant la réponse du serveur
+    if (st.t0 && localTap.t != null && localTap.t >= st.t0) {
+      setBuzzer('done', `<span class="time">${fmt(localTap.t - st.t0)}</span><span class="unit">secondes</span>`);
+      setStatus('Buzzé !', 'gold', 'Calcul du classement…');
+    } else {
+      setBuzzer('done', '<span class="lbl">…</span>');
+      setStatus('Buzz envoyé', '', connected ? '' : 'Envoi dès que la connexion revient…');
+    }
+  } else if (st.phase === 'armed') {
+    setBuzzer('', '<span class="lbl">Buzz</span>');
+    setStatus('Écoute bien…', '', 'Tape sur le buzzer dès que la musique s\'arrête, si tu as la réponse.');
+  } else if (st.phase === 'open') {
+    setBuzzer('go', '<span class="lbl">Buzz</span>');
+    setStatus('Buzze !', 'red', 'La musique est coupée : tape si tu as la réponse.');
+  } else if (st.phase === 'closed') {
+    setBuzzer('off', '<span class="lbl">Buzz</span>');
+    setStatus('Extrait terminé', '', 'Prochain extrait dans un instant.');
+  } else {
+    setBuzzer('off', '<span class="lbl">Buzz</span>');
+    setStatus('Équipe inscrite ✔', 'ok', 'La partie va commencer. Garde cette page ouverte.');
+  }
+
+  if (st.phase === 'closed' && st.roundTop && st.roundTop.length) {
+    topHtml = st.roundTop.map((r) => `<div class="prow2${team && r.name === team.name ? ' me' : ''}"><span class="m">${MEDALS[r.rank - 1] || r.rank}</span><span class="n">${esc(r.name)}</span><span class="v">${fmt(r.reaction)} s</span></div>`).join('');
+  }
+  const rt = $('#round-top');
+  if (rt.dataset.html !== topHtml) { rt.innerHTML = topHtml; rt.dataset.html = topHtml; }
+}
+
+function renderBoard(){
+  const me = st && st.me;
+  const mine = $('#b-mine');
+  if (me) {
+    const r = me.points > 0 && me.rank ? (me.rank <= 3 ? MEDALS[me.rank - 1] : ord(me.rank)) : '–';
+    mine.innerHTML = `<span class="r">${r}</span><span class="t"><b>${esc(me.name)}</b><span>${me.points} pt${me.points > 1 ? 's' : ''}${me.points > 0 ? ` · ${ord(me.rank)} sur ${me.total}${me.tied ? ' (ex æquo)' : ''}` : ' · pas encore de points'}</span></span>`;
+  } else mine.innerHTML = '';
+  const list = $('#b-list');
+  const top = (st && st.top) || [];
+  list.innerHTML = top.length
+    ? top.map((r) => `<div class="prow2${me && r.name === me.name ? ' me' : ''}"><span class="m">${r.rank <= 3 ? MEDALS[r.rank - 1] : r.rank}</span><span class="n">${esc(r.name)}</span><span class="v">${r.points} pt${r.points > 1 ? 's' : ''}</span></div>`).join('')
+    : '<div class="empty">Aucune équipe n\'a encore marqué de points.</div>';
+}
+
+// ---------- Démarrage ----------
+if (token) go('game');
+connect();
+})();
+</script>
+</body>
+</html>

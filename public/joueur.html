@@ -127,10 +127,10 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
   <h1 class="marquee"><small>Bienvenue au</small>Blind test XXL</h1>
   <div class="rules">
     <p>Bienvenue au blind test XXL de <strong>BBV</strong>. Ce blind test sera fait de la manière suivante : <strong>plus tu es rapide, plus tu gagnes de points.</strong> De la compétition à l'état pur.</p>
-    <p>Des extraits de musique vont passer. Au moment où la musique s'arrête, <span class="shout">tape sur le buzzer</span> si tu as une réponse (les plus rapides seront désignés).</p>
+    <p>Des extraits de musique vont passer. Dès que tu as la réponse, <span class="shout">tape sur le buzzer</span> : pas besoin d'attendre la fin de l'extrait (les plus rapides seront désignés).</p>
     <p>Bonne chance ! Et surtout n'oublie pas de <span class="shout">kiffer</span> 🫶</p>
   </div>
-  <div class="note">Buzzer avant que la musique s'arrête, c'est un faux départ : ton équipe est bloquée pour cet extrait.</div>
+  <div class="note">Le chrono démarre avec l'extrait : un seul buzz par équipe et par extrait, alors ne tape pas au hasard.</div>
   <div class="err" id="rules-msg"></div>
   <div class="grow"></div>
   <button class="btn" id="go-team">J'ai compris, j'inscris mon équipe</button>
@@ -281,7 +281,7 @@ function connect(){
         break;
       case 'state':
         // Nouvel extrait : on resynchronise l'horloge juste avant le moment qui compte
-        if (m.phase === 'armed' && (!st || st.roundId !== m.roundId)) burst(4);
+        if ((m.phase === 'armed' || m.phase === 'open') && (!st || st.roundId !== m.roundId)) burst(4);
         st = m; if (m.me) team = { ...team, ...m.me }; render(); break;
       case 'kicked': forget("Ton inscription n'est plus active : inscris ton équipe à nouveau."); break;
     }
@@ -431,11 +431,11 @@ function render(){
     setStatus('Trop tôt !', 'red', 'Faux départ : ton équipe est bloquée pour cet extrait.');
   } else if (my && my.state === 'pending') {
     setBuzzer('done', '<span class="lbl">…</span>');
-    setStatus('Buzz enregistré', '', 'On vérifie si la musique était bien coupée…');
+    setStatus('Buzz enregistré', '', 'On calcule ton temps…');
   } else if (tapped) {
     // Retour immédiat avant la réponse du serveur
-    if (st.t0 && localTap.t != null && localTap.t >= st.t0) {
-      setBuzzer('done', `<span class="time">${fmt(localTap.t - st.t0)}</span><span class="unit">secondes</span>`);
+    if (st.t0 && localTap.t != null) {
+      setBuzzer('done', `<span class="time">${fmt(Math.max(0, localTap.t - st.t0))}</span><span class="unit">secondes</span>`);
       setStatus('Buzzé !', 'gold', 'Calcul du classement…');
     } else {
       setBuzzer('done', '<span class="lbl">…</span>');
@@ -446,7 +446,7 @@ function render(){
     setStatus('Écoute bien…', '', 'Tape sur le buzzer dès que la musique s\'arrête, si tu as la réponse.');
   } else if (st.phase === 'open') {
     setBuzzer('go', '<span class="lbl">Buzz</span>');
-    setStatus('Buzze !', 'red', 'La musique est coupée : tape si tu as la réponse.');
+    setStatus('Buzze !', 'red', 'Tape dès que tu as la réponse : le plus rapide gagne le plus de points.');
   } else if (st.phase === 'closed') {
     setBuzzer('off', '<span class="lbl">Buzz</span>');
     setStatus('Extrait terminé', '', 'Prochain extrait dans un instant.');

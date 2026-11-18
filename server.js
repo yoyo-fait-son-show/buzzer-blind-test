@@ -23,7 +23,6 @@ const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'partie.json');
 const MAX_TEAMS = parseInt(process.env.MAX_TEAMS || '600', 10);
 
 // Tolérances de mesure
-const PENDING_MS = 1500;   // délai max d'arrivée du signal STOP de la régie
 const MAX_BUZZ_AGE = 10000; // un buzz envoyé hors connexion reste valable 10 s
 const FUTURE_SLACK = 80;    // un horodatage ne peut pas être dans le futur
 
@@ -336,10 +335,13 @@ function register(ws, msg) {
   send(ws, { type: 'registered', token: team.token, team: teamPublic(team) });
 }
 
+// Chrono compté depuis le lancement de l'extrait : tout buzz est valable,
+// il n'y a plus de faux départ. Math.max évite un temps négatif si l'horloge
+// du téléphone est très légèrement en avance sur celle du serveur.
 function decideEntry(round, e) {
-  if (round.t0 === null || round.t0 === undefined) return; // pas encore de STOP
-  if (e.t < round.t0) { e.state = 'false'; e.reaction = null; }
-  else { e.state = 'valid'; e.reaction = e.t - round.t0; }
+  const ref = round.t0 === null || round.t0 === undefined ? round.armedAt : round.t0;
+  e.state = 'valid';
+  e.reaction = Math.max(0, e.t - ref);
 }
 
 function buzz(ws, msg) {
@@ -360,14 +362,7 @@ function buzz(ws, msg) {
 
   const e = { teamId: team.id, t, recvAt: recv, state: 'pending', reaction: null, verdict: null };
   r.entries[team.id] = e;
-  if (game.phase === 'armed') {
-    // Le STOP de la régie est peut-être encore en route : on attend un peu avant de trancher.
-    setTimeout(() => {
-      if (e.state === 'pending' && (r.t0 == null || e.t < r.t0)) { e.state = 'false'; markDirty(); }
-    }, PENDING_MS);
-  } else {
-    decideEntry(r, e);
-  }
+  decideEntry(r, e);
   markDirty();
 }
 
@@ -379,25 +374,22 @@ function adminAction(ws, msg) {
   const tSafe = tClient !== null && tClient <= recv + FUTURE_SLACK && tClient >= recv - 3000 ? tClient : recv;
 
   switch (a) {
-    case 'arm': // lancer l'extrait
+    case 'arm': // lancer l'extrait : les buzzers sont ouverts tout de suite
       if (game.phase === 'armed' || game.phase === 'open') return;
       game.roundNo += 1;
-      game.rounds.push({ id: newId(), no: game.roundNo, armedAt: recv, t0: null, closedAt: null, entries: {} });
-      game.phase = 'armed';
+      game.rounds.push({ id: newId(), no: game.roundNo, armedAt: recv, t0: recv, closedAt: null, entries: {} });
+      game.phase = 'open';
       game.display = 'round';
       break;
-    case 'stop': // la musique s'arrête : top départ du chrono
-      if (game.phase !== 'armed' || !r) return;
-      r.t0 = tSafe;
-      game.phase = 'open';
-      for (const e of Object.values(r.entries)) decideEntry(r, e);
-      break;
-    case 'close':
-      if (game.phase !== 'open' || !r) return;
+    case 'stop':  // ancienne régie encore en cache : « stop » ferme les buzzers
+    case 'close': // stopper l'extrait : plus de buzz possible
+      if (!r || (game.phase !== 'open' && game.phase !== 'armed')) return;
+      if (r.t0 === null || r.t0 === undefined) r.t0 = r.armedAt;
       r.closedAt = tSafe;
       game.phase = 'closed';
       // Buzz partis avant la fermeture mais arrivés après : acceptés par buzz()
       for (const e of Object.values(r.entries)) if (e.t > r.closedAt) delete r.entries[e.teamId];
+      for (const e of Object.values(r.entries)) decideEntry(r, e);
       break;
     case 'cancelRound':
       if (!r) return;

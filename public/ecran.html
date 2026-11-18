@@ -194,7 +194,7 @@ main{flex:1;position:relative;min-height:0}
       <div class="listen" id="listen">
         <div class="no" id="l-no">Extrait 1</div>
         <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <p>Buzzez dès que la musique s'arrête !</p>
+        <p>Buzzez dès que vous avez la réponse !</p>
         <div class="fs" id="l-fs"></div>
       </div>
       <div id="res" style="display:none;flex:1;min-height:0;flex-direction:column">
@@ -263,7 +263,7 @@ main{flex:1;position:relative;min-height:0}
 
   <h3>Raccourcis clavier</h3>
   <div class="keys">
-    <kbd>Espace</kbd> lancer l'extrait → stop (chrono) → fermer les buzzers<br>
+    <kbd>Espace</kbd> lancer l'extrait (buzzers ouverts) → stopper l'extrait<br>
     <kbd>O</kbd> bonne réponse pour l'équipe désignée · <kbd>N</kbd> mauvaise réponse<br>
     <kbd>Retour</kbd> annuler le dernier verdict<br>
     <kbd>I</kbd> inscription · <kbd>E</kbd> extrait · <kbd>C</kbd> classement<br>
@@ -405,16 +405,15 @@ showBackupInfo();
 
 function act(action, extra = {}){ return sendRaw({ type: 'admin', action, ...extra }); }
 
-// ---------- Action principale : lancer / stop / fermer ----------
+// ---------- Action principale : lancer l'extrait / stopper l'extrait ----------
 function mainAction(ev){
   if (!st || !isAdmin) return;
   const t = serverNow(ev && ev.timeStamp > 0 && Math.abs(performance.now() - ev.timeStamp) < 2000 ? ev.timeStamp : undefined);
   // Anti double appui
   if (performance.now() - lastAction < 900) return;
   lastAction = performance.now();
-  if (st.phase === 'lobby' || st.phase === 'closed') act('arm');
-  else if (st.phase === 'armed') { act('stop', { t }); flash(); }
-  else if (st.phase === 'open') act('close', { t });
+  if (st.phase === 'lobby' || st.phase === 'closed') { act('arm'); flash(); }
+  else act('close', { t });
 }
 $('#main-btn').addEventListener('click', (e) => { mainAction(e); e.currentTarget.blur(); });
 function flash(){ const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
@@ -528,7 +527,7 @@ function render(){
   // Bandeau
   $('#brand').textContent = st.settings.title;
   const pill = $('#pill');
-  const labels = { lobby: 'Inscriptions', armed: '🎵 Musique en cours', open: 'Buzzers ouverts', closed: 'Buzzers fermés' };
+  const labels = { lobby: 'Inscriptions', armed: '🎵 Musique en cours', open: '🎵 Extrait en cours — buzzers ouverts', closed: 'Buzzers fermés' };
   pill.textContent = labels[st.phase];
   pill.className = 'pill ' + st.phase;
   setHtml($('#count'), `<b>${st.teamsCount}</b> équipe${st.teamsCount > 1 ? 's' : ''} · <b>${st.onlineCount}</b> en ligne`);
@@ -540,14 +539,13 @@ function render(){
   // Bouton principal
   const mb = $('#main-btn');
   if (st.phase === 'lobby' || st.phase === 'closed') { mb.innerHTML = `Lancer l'extrait ${st.roundNo + 1}<kbd>Espace</kbd>`; mb.className = 'main'; }
-  else if (st.phase === 'armed') { mb.innerHTML = 'Stop : top chrono !<kbd>Espace</kbd>'; mb.className = 'main armed'; }
-  else { mb.innerHTML = 'Fermer les buzzers<kbd>Espace</kbd>'; mb.className = 'main'; }
+  else { mb.innerHTML = `Stopper l'extrait ${st.roundNo}<kbd>Espace</kbd>`; mb.className = 'main armed'; }
   $('#cancel-btn').style.display = st.roundNo ? '' : 'none';
   const nx = nextEntry();
   $('#hint').textContent = st.phase === 'closed' && nx ? `${nx.name} doit répondre : O = bonne réponse, N = mauvaise` : '';
 
-  // Flash si le STOP vient d'une autre régie
-  if (prevPhase === 'armed' && st.phase === 'open' && performance.now() - lastAction > 900) flash();
+  // Flash si l'extrait a été lancé depuis une autre régie
+  if (prevPhase !== 'open' && st.phase === 'open' && performance.now() - lastAction > 900) flash();
   prevPhase = st.phase;
 
   renderJoin();
@@ -588,13 +586,12 @@ function rowHtml(e, nextId, big){
 }
 
 function renderRound(){
-  const listening = st.phase === 'armed' || (st.phase === 'lobby');
+  const listening = st.phase === 'lobby';
   $('#listen').style.display = listening ? '' : 'none';
   $('#res').style.display = listening ? 'none' : 'flex';
   if (listening) {
-    $('#l-no').textContent = st.roundNo ? `Extrait ${st.roundNo}` : 'Prêts ?';
-    const fs = st.falseStarts + st.pending;
-    $('#l-fs').textContent = st.phase === 'armed' && fs ? `${fs} buzz trop tôt 😬` : '';
+    $('#l-no').textContent = 'Prêts ?';
+    $('#l-fs').textContent = '';
     return;
   }
   const call = $('#r-call');

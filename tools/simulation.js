@@ -5,8 +5,8 @@
 //  node tools/simulation.js <adresse> [nombre]
 //    ex. node tools/simulation.js https://mon-buzzer.onrender.com 300
 //
-//  Les fausses équipes s'inscrivent puis buzzent toutes seules quand
-//  tu fais « Stop » sur l'écran (quelques-unes font des faux départs).
+//  Les fausses équipes s'inscrivent puis buzzent toutes seules pendant
+//  l'extrait, chacune au bout d'un temps différent.
 //  Après la répétition : Réglages > « Tout effacer ».
 //
 //  Options de test (développeur) :
@@ -31,8 +31,8 @@ const wsUrl = base.replace(/^http/, 'ws') + '/ws';
 const trueNow = () => performance.timeOrigin + performance.now(); // même horloge que le serveur si même machine
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rand = (a, b) => a + Math.random() * (b - a);
-// Temps de réaction humain réaliste (log-normale, ~0,4 à 3 s)
-const humanReaction = () => Math.min(6000, Math.exp(rand(Math.log(280), Math.log(2600))));
+// Temps mis à reconnaître le morceau puis à taper (log-normale, ~1 à 12 s)
+const humanReaction = () => Math.min(20000, Math.exp(rand(Math.log(900), Math.log(12000))));
 
 const stats = { registered: 0, buzzes: 0, falseStarts: 0, syncErr: [], intended: new Map(), msgs: 0 };
 
@@ -55,14 +55,8 @@ function makeBot(i) {
       } else if (m.type === 'state') {
         if (m.roundId && m.roundId !== roundSeen && (m.phase === 'armed' || m.phase === 'open')) {
           roundSeen = m.roundId;
-          const roll = Math.random();
-          if (roll < 0.06) {
-            // faux départ pendant la musique
-            const id = m.roundId;
-            setTimeout(() => { const at = performance.now(); stats.falseStarts++; up({ type: 'buzz', round: id, t: at + sync.offset }); }, rand(200, 1800));
-            intended = 'false';
-          } else if (roll < 0.75) intended = humanReaction();
-          else intended = null; // pas de réponse : ne buzze pas
+          // 80 % des équipes trouvent et buzzent, les autres laissent passer
+          intended = Math.random() < 0.8 ? humanReaction() : null;
         }
         if (m.phase === 'open' && m.t0 && typeof intended === 'number' && !m.my) {
           const target = m.t0 + intended; // heure serveur visée
@@ -114,13 +108,12 @@ async function admin() {
   await Promise.all(bots);
   console.log(`${stats.registered} équipes inscrites en ${((Date.now() - t0) / 1000).toFixed(1)} s.`);
 
-  if (!KEY) { console.log('Les équipes buzzent toutes seules à chaque « Stop ». Ctrl+C pour arrêter.'); return; }
+  if (!KEY) { console.log('Les équipes buzzent toutes seules pendant chaque extrait. Ctrl+C pour arrêter.'); return; }
 
   const reg = await admin();
   await sleep(800);
   for (let r = 0; r < ROUNDS; r++) {
-    reg.act('arm'); await sleep(3500);
-    const stopAt = performance.now(); reg.act('stop'); await sleep(7000);
+    reg.act('arm'); await sleep(22000);   // l'extrait tourne, les équipes buzzent pendant ce temps
     reg.act('close'); await sleep(1200);
     const s = reg.st;
     // Vérifie que le serveur a calculé les mêmes temps que ceux mesurés par les bots
@@ -131,7 +124,7 @@ async function admin() {
       if (want !== undefined) maxDiff = Math.max(maxDiff, Math.abs(want - e.reaction));
     }
     const sorted = s.entries.every((e, k, a) => k === 0 || a[k - 1].reaction <= e.reaction);
-    console.log(`Extrait ${s.roundNo} : ${s.entries.length} buzz valides, ${s.falseStarts} faux départs, ${s.pending} en attente, classement trié : ${sorted ? 'oui' : 'NON'}, écart max serveur/bots : ${maxDiff.toFixed(1)} ms`);
+    console.log(`Extrait ${s.roundNo} : ${s.entries.length} buzz, ${s.falseStarts} refusés, classement trié : ${sorted ? 'oui' : 'NON'}, écart max serveur/bots : ${maxDiff.toFixed(1)} ms`);
     if (s.entries.length >= 2) { reg.act('verdict', { roundNo: s.roundNo, teamId: s.entries[0].teamId, verdict: 'ko' }); reg.act('verdict', { roundNo: s.roundNo, teamId: s.entries[1].teamId, verdict: 'ok' }); }
     await sleep(600);
   }

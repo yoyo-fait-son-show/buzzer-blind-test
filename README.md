@@ -32,7 +32,7 @@ Serveur lancé, dans un deuxième terminal :
 ```
 npm run simulation -- http://localhost:3000 300
 ```
-300 équipes de test s'inscrivent puis buzzent toutes seules à chaque « Stop » (quelques-unes font exprès des faux départs). Après la répétition : **Réglages → Tout effacer**.
+300 équipes de test s'inscrivent puis buzzent toutes seules pendant chaque extrait, chacune au bout d'un temps différent. Après la répétition : **Réglages → Tout effacer**.
 
 ---
 
@@ -73,9 +73,8 @@ Toute autre plateforme qui fait tourner Node.js et accepte les WebSockets foncti
 
 | Touche | Ce qui se passe |
 |---|---|
-| **Espace** | Lance l'extrait : les buzzers s'arment. Lance ta musique. |
-| **Espace** | **Top chrono** au moment où tu coupes la musique : flash rouge, les buzzers comptent le temps. |
-| **Espace** | Ferme les buzzers. L'équipe la plus rapide est encadrée « À vous ! ». |
+| **Espace** | Lance l'extrait : flash rouge, **les buzzers sont ouverts tout de suite** et le chrono démarre. Lance ta musique dans le même geste. |
+| **Espace** | Stoppe l'extrait : les buzzers se ferment. L'équipe la plus rapide est encadrée « À vous ! ». |
 | **O** | Bonne réponse : l'équipe marque ses points. |
 | **N** | Mauvaise réponse : la main passe à l'équipe suivante. |
 | **Retour** | Annule le dernier verdict. |
@@ -84,9 +83,11 @@ Toute autre plateforme qui fait tourner Node.js et accepte les WebSockets foncti
 
 Tu peux aussi cliquer sur ✅ / ❌ à côté de n'importe quelle équipe.
 
-> ⚠️ **Le chrono démarre quand tu appuies sur Espace**, pas quand la musique s'arrête toute seule. Coupe la musique et appuie sur Espace dans le même geste (musique sur un autre appareil ou une table de mixage, Espace avec l'autre main).
+> ⚠️ **Le chrono démarre quand tu appuies sur Espace**, pas quand la musique démarre vraiment. Lance la musique et appuie sur Espace dans le même geste (musique sur un autre appareil ou une table de mixage, Espace avec l'autre main).
 
-**Faux départs** : une équipe qui buzze avant ton « Top chrono » est bloquée pour l'extrait. Son téléphone affiche « Trop tôt ! ».
+**Pas de faux départ** : les équipes peuvent buzzer pendant la musique, personne n'est bloqué. Le temps affiché est le temps écoulé depuis le lancement de l'extrait, donc la première équipe à reconnaître le morceau est première. Un seul buzz par équipe et par extrait.
+
+**Stopper l'extrait** quand tu veux : quand une équipe a buzzé et que tu veux couper, ou si personne ne trouve. Les buzzers se ferment, tu donnes les verdicts, puis Espace pour l'extrait suivant.
 
 **Annuler l'extrait** (barre de régie) : supprime l'extrait en cours si tu as lancé ou arrêté trop tôt par erreur.
 

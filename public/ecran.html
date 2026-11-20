@@ -243,6 +243,8 @@ main{flex:1;position:relative;min-height:0}
   <label for="s-max">Joueurs maximum par équipe</label>
   <input type="number" id="s-max" min="1" max="20">
   <label class="check"><input type="checkbox" id="s-open"> Inscriptions ouvertes</label>
+  <label class="check"><input type="checkbox" id="s-board-hidden"> Masquer le classement sur les téléphones</label>
+  <div class="help">Pour jouer la dernière manche à l'aveugle. L'onglet Classement disparaît des téléphones et les équipes ne voient plus leur place, seulement leurs points. L'écran projeté, lui, continue d'obéir à la touche C.</div>
   <button class="btn pri" id="s-save">Enregistrer</button>
   <span id="s-saved" style="color:var(--ok);font-weight:700"></span>
 
@@ -486,11 +488,12 @@ function fillSettings(){
   $('#s-points').value = st.settings.points.join(', ');
   $('#s-max').value = st.settings.maxPlayers;
   $('#s-open').checked = st.settings.registrationOpen;
+  $('#s-board-hidden').checked = !!st.settings.boardHidden;
   $('#s-saved').textContent = '';
 }
 $('#s-save').addEventListener('click', () => {
   const points = $('#s-points').value.split(/[,;\s]+/).map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
-  act('settings', { settings: { title: $('#s-title').value, points, maxPlayers: parseInt($('#s-max').value, 10), registrationOpen: $('#s-open').checked } });
+  act('settings', { settings: { title: $('#s-title').value, points, maxPlayers: parseInt($('#s-max').value, 10), registrationOpen: $('#s-open').checked, boardHidden: $('#s-board-hidden').checked } });
   $('#s-saved').textContent = 'Enregistré';
 });
 $('#p-copy').addEventListener('click', () => { navigator.clipboard && navigator.clipboard.writeText(joinUrl()).then(() => { $('#p-copy').textContent = 'Lien copié'; }); });
@@ -530,7 +533,7 @@ function render(){
   const labels = { lobby: 'Inscriptions', armed: '🎵 Musique en cours', open: '🎵 Extrait en cours — buzzers ouverts', closed: 'Buzzers fermés' };
   pill.textContent = labels[st.phase];
   pill.className = 'pill ' + st.phase;
-  setHtml($('#count'), `<b>${st.teamsCount}</b> équipe${st.teamsCount > 1 ? 's' : ''} · <b>${st.onlineCount}</b> en ligne`);
+  setHtml($('#count'), `<b>${st.teamsCount}</b> équipe${st.teamsCount > 1 ? 's' : ''} · <b>${st.onlineCount}</b> en ligne${st.settings.boardHidden ? ' · 🙈 classement masqué' : ''}`);
 
   // Vues
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + st.display));

@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS = {
   points: [10, 8, 6, 5, 4, 3, 2, 1],
   maxPlayers: 8,
   registrationOpen: true,
+  boardHidden: false, // masque le classement sur les téléphones (finale à l'aveugle)
 };
 
 let game = {
@@ -265,6 +266,9 @@ function playerState(teamId, shared) {
     my = { state: e.state, reaction: e.state === 'valid' ? Math.round(e.reaction) : null, rank: e.rank || null, verdict: e.verdict || null, pts: e.state === 'valid' ? pointsFor(e.rank) : 0 };
   }
   const b = board.find((x) => x.team.id === teamId);
+  // Classement masqué : ni le top, ni la place de l'équipe ne quittent le serveur.
+  // Les points restent visibles, c'est la comparaison qui disparaît.
+  const hidden = !!game.settings.boardHidden;
   return {
     type: 'state',
     phase: game.phase,
@@ -272,11 +276,12 @@ function playerState(teamId, shared) {
     roundId: shared.roundId,
     t0: shared.t0,
     title: game.settings.title,
-    me: { ...teamPublic(t), points: b ? b.points : 0, rank: b ? b.rank : null, tied: b ? b.tied : false, total: board.length },
+    boardHidden: hidden,
+    me: { ...teamPublic(t), points: b ? b.points : 0, rank: hidden || !b ? null : b.rank, tied: !hidden && !!b && b.tied, total: board.length },
     my,
     buzzCount: shared.buzzCount,
     roundTop: shared.roundTop,
-    top: shared.top,
+    top: hidden ? [] : shared.top,
   };
 }
 
@@ -419,6 +424,7 @@ function adminAction(ws, msg) {
       }
       if (s.maxPlayers) game.settings.maxPlayers = Math.max(1, Math.min(20, parseInt(s.maxPlayers, 10) || 8));
       if (typeof s.registrationOpen === 'boolean') game.settings.registrationOpen = s.registrationOpen;
+      if (typeof s.boardHidden === 'boolean') game.settings.boardHidden = s.boardHidden;
       recomputeTotals();
       break;
     }

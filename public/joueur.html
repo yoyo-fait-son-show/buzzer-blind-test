@@ -187,7 +187,7 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
 
 <nav class="tabs" id="tabs">
   <button data-tab="buzz" class="cur">Buzzer</button>
-  <button data-tab="board">Classement</button>
+  <button data-tab="board" id="tab-btn-board">Classement</button>
 </nav>
 
 <script>
@@ -349,11 +349,14 @@ $('#register').addEventListener('click', () => {
   sendRaw({ type: 'register', name: $('#team-name').value, players });
 });
 
+function showTab(name){
+  tab = name;
+  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('cur', x.dataset.tab === name));
+  $('#tab-buzz').style.display = name === 'buzz' ? '' : 'none';
+  $('#tab-board').style.display = name === 'board' ? '' : 'none';
+}
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
-  tab = b.dataset.tab;
-  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('cur', x === b));
-  $('#tab-buzz').style.display = tab === 'buzz' ? '' : 'none';
-  $('#tab-board').style.display = tab === 'board' ? '' : 'none';
+  showTab(b.dataset.tab);
   render();
 }));
 $('#logout').addEventListener('click', () => {
@@ -410,6 +413,11 @@ function render(){
   $('#g-points').textContent = me ? me.points : 0;
   const unit = me && me.points > 1 ? 'pts' : 'pt';
   $('#g-rank').textContent = me && me.points > 0 && me.rank ? `${unit} · ${ord(me.rank)}${me.tied ? ' ex æquo' : ''}` : unit;
+
+  // Finale à l'aveugle : l'onglet Classement disparaît pendant que la régie le masque
+  const hideBoard = !!(st && st.boardHidden);
+  $('#tab-btn-board').style.display = hideBoard ? 'none' : '';
+  if (hideBoard && tab === 'board') showTab('buzz');
 
   if (tab === 'board') return renderBoard();
 

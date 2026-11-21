@@ -68,6 +68,7 @@ Toute autre plateforme qui fait tourner Node.js et accepte les WebSockets foncti
 - Ordi relié au vidéoprojecteur : ouvre `/ecran`, entre le code régie, appuie sur **F** (plein écran).
 - La vue **Inscription** affiche le QR code et le compteur d'équipes.
 - Teste le réseau sur place avec 2-3 téléphones (4G et Wi‑Fi).
+- **Régie sur téléphone** : ouvre aussi `/ecran` sur ton téléphone (même code régie), en portrait ou en paysage. Tout ce que tu fais dessus (lancer/stopper, ✅ ❌, jokers, réglages) s'applique à l'écran projeté. Touche le titre « Jokers à traiter » pour replier la boîte et voir les verdicts dessous.
 
 **Pour chaque extrait**
 

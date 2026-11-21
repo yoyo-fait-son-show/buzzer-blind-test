@@ -67,7 +67,7 @@ main{flex:1;position:relative;min-height:0}
 .res-head .chrono{font-weight:800;font-stretch:80%;font-variant-numeric:tabular-nums;font-size:clamp(30px,4.2vw,92px);color:var(--cream)}
 .res-head .stats{margin-left:auto;font-weight:700;font-size:clamp(14px,1.4vw,30px);color:var(--muted);text-align:right}
 .res-head .stats b{color:var(--cream)}
-.results{flex:1;overflow-y:auto;min-height:0;padding-right:.6vw;scrollbar-color:var(--line) transparent}
+.results{flex:1;overflow-y:auto;min-height:0;padding-right:.6vw;padding-top:1.8vh;scrollbar-color:var(--line) transparent}
 .empty-res{display:flex;align-items:center;justify-content:center;height:100%;font-size:clamp(20px,2.4vw,52px);font-weight:800;color:var(--muted)}
 
 .row{display:flex;align-items:center;gap:1.4vw;background:var(--plum);border-radius:1.4vh;padding:1.1vh 1.4vw;position:relative}
@@ -138,6 +138,7 @@ main{flex:1;position:relative;min-height:0}
 .panel .help{color:var(--muted);font-size:13px;margin-top:4px}
 .panel .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:800;background:var(--plum-2);cursor:pointer;margin:12px 8px 0 0}
 .panel .btn.pri{background:var(--red);color:#fff}
+.panel a.btn{color:var(--cream)}
 .panel .btn.danger{background:transparent;border:2px solid var(--ko);color:var(--ko)}
 .panel .close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:28px;cursor:pointer;color:var(--muted)}
 .check{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:700}
@@ -164,11 +165,14 @@ main{flex:1;position:relative;min-height:0}
 .login button{margin-top:14px;width:100%;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:18px;background:var(--red);color:#fff;cursor:pointer}
 .login .e{color:var(--ko);min-height:24px;margin-top:10px;font-weight:700}
 /* ---------- Jokers à traiter (régie) ---------- */
-.jq{position:fixed;right:1.6vw;bottom:calc(1.2vh + 64px);width:min(460px,42vw);max-height:46vh;display:flex;flex-direction:column;background:#1e0e45;border:3px solid var(--gold);border-radius:16px;box-shadow:0 1.6vh 5vh rgba(0,0,0,.55);z-index:15;overflow:hidden}
+.jq{position:fixed;right:1.6vw;bottom:calc(var(--barh, 64px) + 1.2vh);width:min(460px,42vw);max-height:46vh;display:flex;flex-direction:column;background:#1e0e45;border:3px solid var(--gold);border-radius:16px;box-shadow:0 1.6vh 5vh rgba(0,0,0,.55);z-index:15;overflow:hidden}
 .jq[hidden],.regie-off .jq{display:none}
 .jq.pulse{animation:jqpulse .9s ease-out 2}
 @keyframes jqpulse{0%{box-shadow:0 0 0 0 rgba(255,194,60,.75)}100%{box-shadow:0 0 0 22px rgba(255,194,60,0)}}
-.jq-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--plum-2);font-weight:800;font-size:clamp(14px,1.1vw,22px)}
+.jq-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--plum-2);font-weight:800;font-size:clamp(14px,1.1vw,22px);cursor:pointer;user-select:none}
+.jq-head .chev{flex:none;color:var(--muted);transition:transform .15s}
+.jq.min .jq-list,.jq.min #jq-all{display:none}
+.jq.min .chev{transform:rotate(180deg)}
 .jq-head .t{flex:1}
 .jq-head button{border:none;border-radius:8px;padding:7px 10px;font-weight:800;font-size:13px;background:var(--ok);color:var(--night);cursor:pointer;white-space:nowrap}
 .jq-list{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
@@ -201,6 +205,79 @@ main{flex:1;position:relative;min-height:0}
 .offline{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--night);font-weight:800;padding:6px 14px;border-radius:999px;z-index:25;display:none}
 .offline.on{display:block}
 @media (prefers-reduced-motion: reduce){.eq i{animation:none;height:60%}.flash.go{animation:none}}
+
+/* ============================================================
+   Régie sur téléphone (portrait et paysage) ou petite tablette
+   ============================================================ */
+button{touch-action:manipulation}
+@media (max-width: 900px), (max-height: 500px){
+  .app{height:100vh;height:100dvh}
+  header{flex-wrap:wrap;gap:4px 10px;padding:8px 12px}
+  .brand{font-size:17px}
+  .pill,.count{font-size:13px}
+  .count{white-space:normal}
+  .view{padding:10px 12px}
+
+  /* Barre de régie : tout reste à l'écran, rien ne déborde */
+  .bar{flex-wrap:wrap;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+  .bar kbd,.bar .hint,.bar .sp,.bar .lg{display:none}
+  .bar button{flex:1 1 auto;font-size:15px;padding:.65em .7em;min-height:44px}
+  .bar .main{font-size:16px;padding:.6em .9em;flex:2 1 auto}
+
+  /* Inscription */
+  #v-join{gap:16px}
+  .qr{height:min(60dvh,44vw);border-radius:12px;padding:10px}
+
+  /* Résultats de l'extrait */
+  .row{gap:10px;padding:8px 10px;border-radius:10px}
+  .row .rk{width:auto;min-width:30px}
+  .row .vd{gap:6px}
+  .row .vd button{width:44px;height:44px;border-radius:10px}
+  .row.next::after{left:10px;top:-10px}
+  .podium-rows{gap:8px}
+  .podium-rows .row{padding:10px}
+  .rest-rows{gap:8px}
+
+  /* Jokers à traiter : pleine largeur, au-dessus de la barre */
+  .jq{left:8px;right:8px;width:auto;max-height:45dvh;bottom:calc(var(--barh, 64px) + 8px)}
+  .jq-row{gap:8px;padding:8px}
+  .jq-row .ic{font-size:20px}
+  .jq-row .tx b{font-size:16px}
+  .jq-row .tx span{font-size:13px}
+  .jq-row button,.jq-head button{min-height:40px;font-size:14px;padding:8px 10px}
+  .jq-head{padding:10px 12px;font-size:15px}
+  .results{padding-top:12px}
+
+  /* Réglages : plein écran, croix toujours visible */
+  .panel{width:100vw;padding:14px 16px calc(28px + env(safe-area-inset-bottom));border-left:none}
+  .panel .close{position:fixed;top:10px;right:10px;width:44px;height:44px;border-radius:50%;background:var(--plum-2);color:var(--cream);z-index:2;font-size:26px;line-height:1}
+  .panel h3:first-of-type{margin-right:54px}
+  .panel .btn{min-height:44px}
+  .trow{flex-wrap:wrap}
+  .trow .tn{flex:1 1 calc(100% - 24px)}
+  .trow button{min-height:38px;padding:8px 12px;font-size:14px}
+  .hrow button{min-height:34px;padding:6px 10px}
+}
+/* Téléphone en paysage : peu de hauteur */
+@media (max-height: 500px){
+  .jq{max-height:42dvh}
+  .jq-row{padding:6px 8px}
+}
+/* Téléphone en portrait */
+@media (max-width: 600px){
+  .brand{flex-basis:100%}
+  .bar{display:grid;grid-template-columns:repeat(3,1fr)}
+  .bar .main{grid-column:1/-1}
+  #v-join{flex-direction:column;justify-content:center;text-align:center}
+  .qr{height:min(42dvh,78vw)}
+  .chips{justify-content:center}
+  .rest-rows,.board-rest{grid-template-columns:1fr}
+  .row .tm{font-size:22px}
+  .row .nm b{font-size:17px}
+  .podium-rows .row .nm b{font-size:20px}
+  .podium-rows .row .tm{font-size:26px}
+  .podium-rows .row .rk{font-size:26px}
+}
 </style>
 </head>
 <body>
@@ -257,14 +334,14 @@ main{flex:1;position:relative;min-height:0}
     <button data-view="board">Classement<kbd>C</kbd></button>
     <span class="sp"></span>
     <span class="hint" id="hint"></span>
-    <button id="cancel-btn" title="Supprime l'extrait en cours (en cas d'erreur)">Annuler l'extrait</button>
-    <button id="settings-btn">Réglages</button>
+    <button id="cancel-btn" title="Supprime l'extrait en cours (en cas d'erreur)">Annuler<span class="lg"> l'extrait</span></button>
+    <button id="settings-btn">⚙ Réglages</button>
     <button id="fs-btn" title="Plein écran (F)">⛶</button>
   </div>
 </div>
 
 <div class="jq" id="jq" hidden aria-live="polite">
-  <div class="jq-head"><span class="t" id="jq-title">🃏 Jokers à traiter</span><button id="jq-all" title="Valide tous les +1 en attente">Valider tous les +1</button></div>
+  <div class="jq-head" id="jq-head" title="Replier / déplier"><span class="t" id="jq-title">🃏 Jokers à traiter</span><button id="jq-all" title="Valide tous les +1 en attente">Valider tous les +1</button><span class="chev" aria-hidden="true">▾</span></div>
   <div class="jq-list" id="jq-list"></div>
 </div>
 
@@ -524,6 +601,13 @@ function toggleFs(){
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 $('#fs-btn').addEventListener('click', toggleFs);
+// iPhone : pas de plein écran pour une page web, le bouton ne servirait à rien
+if (!document.documentElement.requestFullscreen) $('#fs-btn').style.display = 'none';
+// Hauteur de la barre de régie : la boîte des jokers se place juste au-dessus
+function setBarH(){ document.documentElement.style.setProperty('--barh', $('#bar').offsetHeight + 'px'); }
+window.addEventListener('resize', setBarH);
+window.addEventListener('orientationchange', () => setTimeout(setBarH, 300));
+setBarH();
 $('#cancel-btn').addEventListener('click', () => {
   if (!st || !st.roundNo) return;
   if (confirm(`Annuler l'extrait ${st.roundNo} ? Ses buzz et ses points seront supprimés.`)) act('cancelRound');
@@ -567,7 +651,11 @@ $('#j-give-all').addEventListener('click', () => {
 // ---------- Jokers : notifications à traiter ----------
 $('#jq').addEventListener('pointerdown', (e) => {
   const b = e.target.closest('button');
-  if (!b) return;
+  if (!b) {
+    // Toucher le titre replie / déplie la boîte (pratique sur téléphone)
+    if (e.target.closest('#jq-head')) { e.preventDefault(); $('#jq').classList.toggle('min'); }
+    return;
+  }
   e.preventDefault();
   if (b.id === 'jq-all') { act('jokerResolveAll', { choice: 'plus' }); return; }
   if (b.dataset.ja) act('jokerResolve', { useId: b.dataset.id, ok: b.dataset.ja === 'ok' });
@@ -635,7 +723,8 @@ function render(){
   const mb = $('#main-btn');
   if (st.phase === 'lobby' || st.phase === 'closed') { mb.innerHTML = `Lancer l'extrait ${st.roundNo + 1}<kbd>Espace</kbd>`; mb.className = 'main'; }
   else { mb.innerHTML = `Stopper l'extrait ${st.roundNo}<kbd>Espace</kbd>`; mb.className = 'main armed'; }
-  $('#cancel-btn').style.display = st.roundNo ? '' : 'none';
+  const cancelShown = !!st.roundNo;
+  if (($('#cancel-btn').style.display !== 'none') !== cancelShown) { $('#cancel-btn').style.display = cancelShown ? '' : 'none'; setBarH(); }
   const nx = nextEntry();
   $('#hint').textContent = st.phase === 'closed' && nx ? `${nx.name} doit répondre : O = bonne réponse, N = mauvaise` : '';
 

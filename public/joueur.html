@@ -112,6 +112,32 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
 .empty{color:var(--muted);text-align:center;padding:26px 10px;background:var(--plum);border-radius:12px}
 .link{background:none;border:none;color:#8a7bb0;font-size:14px;text-decoration:underline;cursor:pointer;margin:18px auto 0;display:block}
 
+/* ---------- Joker ---------- */
+.jk-field{margin-top:22px}
+.jk-field label{display:block;font-weight:800;margin-bottom:8px}
+.jk-field label span{font-weight:600;color:var(--muted)}
+.jk-help{color:var(--muted);font-size:14px;margin-top:6px}
+.joker{scroll-margin-bottom:calc(env(safe-area-inset-bottom) + 96px);width:100%;background:var(--plum-2);border:2px solid var(--gold);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.joker[hidden]{display:none}
+.joker.wait{border-style:dashed}
+.joker.used{border-color:var(--line)}
+.joker .jh{display:flex;align-items:center;gap:12px}
+.joker .jh .ic{font-size:28px;line-height:1;flex:none}
+.joker .jh .tx{flex:1;min-width:0;font-weight:800;font-size:17px;line-height:1.25}
+.joker .jh .tx span{display:block;font-weight:600;font-size:14px;color:var(--muted)}
+.jbtn{border:none;border-radius:12px;padding:14px 10px;font-weight:800;font-size:17px;cursor:pointer;background:var(--gold);color:var(--night);box-shadow:0 4px 0 #a57400;width:100%;transition:transform .06s,box-shadow .06s}
+.jbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #a57400}
+.jbtn:disabled{background:var(--plum);color:var(--muted);box-shadow:none;cursor:default;transform:none}
+.jbtn:focus-visible,.jcancel:focus-visible{outline:3px solid var(--cream);outline-offset:2px}
+.jchoices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jchoices .jbtn{font-size:18px;padding:16px 8px}
+.jchoices .jbtn.defi{background:var(--red);color:#fff;box-shadow:0 4px 0 var(--red-deep)}
+.jcancel{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:14px;cursor:pointer;align-self:center;padding:2px 8px}
+.jerr{color:var(--ko);font-weight:700;font-size:14px;text-align:center}
+.notice{font-weight:700;text-align:center;border-radius:10px;padding:8px 12px;margin:4px 0;background:var(--plum-2);border:2px solid var(--gold)}
+.notice.bad{border-color:var(--line);color:var(--muted)}
+.notice[hidden]{display:none}
+
 /* ---------- Onglets ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:rgba(23,11,54,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
 .tabs.on{display:flex}
@@ -142,6 +168,11 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
   <h2>Nom de ton équipe</h2>
   <p class="sub">Un seul téléphone par équipe : c'est lui qui aura le buzzer.</p>
   <input class="field" id="team-name" maxlength="30" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ex. Les Rois du Refrain">
+  <div class="jk-field" id="jk-field" hidden>
+    <label for="joker-pass">🃏 Mot de passe joker <span>(facultatif)</span></label>
+    <input class="field" id="joker-pass" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="Tu le connais ? Tape-le ici">
+    <p class="jk-help">Le bon mot de passe donne un joker à ton équipe. Une seule chance, au moment de l'inscription.</p>
+  </div>
   <div class="err" id="team-err"></div>
   <div class="grow"></div>
   <button class="btn" id="go-players">Suivant</button>
@@ -166,6 +197,7 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
     <div class="score"><b id="g-points">0</b><span id="g-rank">pts</span></div>
   </div>
   <div class="conn" id="conn">Reconnexion…</div>
+  <div class="notice" id="notice" hidden></div>
 
   <div id="tab-buzz" class="stage">
     <div class="round" id="g-round"></div>
@@ -174,6 +206,7 @@ h2{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.05;ma
       <button class="buzzer off" id="buzzer" aria-label="Buzzer"><span class="lbl">Buzz</span></button>
     </div>
     <div class="status" id="status"></div>
+    <div class="joker" id="joker" hidden aria-live="polite"></div>
     <div class="podium" id="round-top"></div>
   </div>
 
@@ -209,6 +242,9 @@ let localTap = null;     // { round, t } : tap fait sur ce téléphone
 let pendingBuzz = null;  // buzz à envoyer dès la reconnexion
 let tab = 'buzz';
 let maxPlayers = 8;
+let jokerChoosing = false; // l'équipe a ouvert le choix « +1 » / « Donne ton défi »
+let jokerSentAt = 0;       // anti double envoi
+let jokerErr = '';
 
 // ---------- Synchronisation d'horloge avec le serveur ----------
 // Le temps de réaction est calculé avec l'heure du serveur, mesurée
@@ -268,6 +304,11 @@ function connect(){
         token = m.token; store.set(TOKEN_KEY, token); team = m.team;
         $('#register').disabled = false;
         go('game');
+        if (m.joker === true) showNotice('🃏 Bon mot de passe ! Ton équipe a un joker.', false);
+        else if (m.joker === false) showNotice('Mauvais mot de passe : pas de joker cette fois, tant pis !', true);
+        break;
+      case 'jokerError':
+        jokerErr = m.message || ''; jokerSentAt = 0; render();
         break;
       case 'error':
         $('#register').disabled = false;
@@ -278,6 +319,7 @@ function connect(){
       case 'lobby':
         lobby = m; maxPlayers = m.maxPlayers || 8;
         $('#rules-msg').textContent = m.registrationOpen ? '' : 'Les inscriptions sont fermées pour le moment.';
+        $('#jk-field').hidden = !m.jokerField;
         break;
       case 'state':
         // Nouvel extrait : on resynchronise l'horloge juste avant le moment qui compte
@@ -294,7 +336,15 @@ function connect(){
 
 function forget(msg){
   token = null; store.del(TOKEN_KEY); team = null; st = null; localTap = null;
+  jokerChoosing = false; jokerErr = ''; $('#joker-pass').value = '';
   go('rules'); $('#rules-msg').textContent = msg || '';
+}
+
+let noticeTimer = null;
+function showNotice(text, bad){
+  const n = $('#notice');
+  n.textContent = text; n.className = 'notice' + (bad ? ' bad' : ''); n.hidden = false;
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { n.hidden = true; }, 10000);
 }
 
 // ---------- Navigation ----------
@@ -311,7 +361,8 @@ function go(name){
 document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
 $('#go-team').addEventListener('click', () => go('team'));
 $('#go-players').addEventListener('click', toPlayers);
-$('#team-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') toPlayers(); });
+$('#team-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (!$('#jk-field').hidden) $('#joker-pass').focus(); else toPlayers(); } });
+$('#joker-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') toPlayers(); });
 function toPlayers(){
   const n = $('#team-name').value.trim();
   if (n.length < 2) { $('#team-err').textContent = "Le nom d'équipe doit faire au moins 2 caractères."; return; }
@@ -346,7 +397,7 @@ $('#register').addEventListener('click', () => {
   $('#players-err').textContent = '';
   if (!connected) { $('#players-err').textContent = 'Pas de connexion pour le moment, réessaie dans quelques secondes.'; return; }
   $('#register').disabled = true;
-  sendRaw({ type: 'register', name: $('#team-name').value, players });
+  sendRaw({ type: 'register', name: $('#team-name').value, players, jokerPassword: $('#jk-field').hidden ? '' : $('#joker-pass').value });
 });
 
 function showTab(name){
@@ -421,8 +472,9 @@ function render(){
 
   if (tab === 'board') return renderBoard();
 
-  if (!st) { setBuzzer('off', '<span class="lbl">Buzz</span>'); setStatus('', '', 'Connexion à la partie…'); $('#round-top').innerHTML = ''; $('#g-round').textContent = ''; return; }
+  if (!st) { setBuzzer('off', '<span class="lbl">Buzz</span>'); setStatus('', '', 'Connexion à la partie…'); $('#round-top').innerHTML = ''; $('#g-round').textContent = ''; $('#joker').hidden = true; return; }
 
+  renderJoker();
   $('#g-round').textContent = st.roundNo ? `Extrait ${st.roundNo}` : '';
   const my = st.my;
   const tapped = localTap && localTap.round === st.roundId;
@@ -469,6 +521,63 @@ function render(){
   const rt = $('#round-top');
   if (rt.dataset.html !== topHtml) { rt.innerHTML = topHtml; rt.dataset.html = topHtml; }
 }
+
+// ---------- Joker ----------
+// Utilisable seulement entre deux extraits. Deux choix : « +1 » (validé par
+// l'animateur) ou « Donne ton défi » (dit à voix haute, le joker est consommé).
+function renderJoker(){
+  const el = $('#joker');
+  const j = st && st.joker;
+  if (!j) { el.hidden = true; jokerChoosing = false; return; }
+  el.hidden = false;
+  if (!j.canUse) jokerChoosing = false;
+  if (j.pending || !j.canUse) jokerSentAt = 0;
+  if (j.pending) jokerErr = '';
+  const plural = j.n > 1 ? `${j.n} jokers` : 'un joker';
+  let cls = 'joker', html = '';
+  const head = (ic, title, sub) => `<div class="jh"><span class="ic">${ic}</span><span class="tx">${title}${sub ? `<span>${sub}</span>` : ''}</span></div>`;
+
+  if (j.pending === 'plus') {
+    cls += ' wait';
+    html = head('⏳', '+1 demandé', "L'animateur va valider ton point.");
+  } else if (j.pending === 'defi') {
+    cls += ' wait';
+    html = head('🎤', 'Donne ton défi !', "Dis à voix haute à l'animateur ce que tu veux qu'il fasse.");
+  } else if (j.n > 0) {
+    const sending = Date.now() - jokerSentAt < 4000;
+    if (j.canUse && jokerChoosing) {
+      html = head('🃏', 'Que fais-tu de ton joker ?', 'Une seule utilisation par joker.')
+        + `<div class="jchoices"><button class="jbtn" data-j="plus"${sending ? ' disabled' : ''}>+1 point</button><button class="jbtn defi" data-j="defi"${sending ? ' disabled' : ''}>Donne ton défi</button></div>`
+        + `<button class="jcancel" data-j="cancel">Garder mon joker pour plus tard</button>`;
+    } else {
+      const why = j.canUse ? (j.last ? `Il te reste ${plural}.` : 'Utilisable une seule fois.')
+        : !j.open ? 'Les jokers sont fermés pour le moment.'
+        : 'Utilisable entre deux extraits.';
+      html = head('🃏', j.n > 1 ? `Tu as ${plural}` : 'Tu as un joker', why)
+        + `<button class="jbtn" data-j="open"${j.canUse ? '' : ' disabled'}>Utiliser mon joker</button>`;
+    }
+  } else {
+    cls += ' used';
+    html = head('✔', j.last === 'defi' ? 'Joker utilisé : défi' : 'Joker utilisé : +1 point', 'Tu n\'as plus de joker.');
+  }
+  if (jokerErr) html += `<div class="jerr">${esc(jokerErr)}</div>`;
+  el.className = cls;
+  if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+}
+$('#joker').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-j]');
+  if (!b || b.disabled) return;
+  const a = b.dataset.j;
+  jokerErr = '';
+  if (a === 'open') { jokerChoosing = true; render(); $('#joker').scrollIntoView({ block: 'end', behavior: 'smooth' }); return; }
+  else if (a === 'cancel') jokerChoosing = false;
+  else if (a === 'plus' || a === 'defi') {
+    if (!st || !st.joker || !st.joker.canUse) return;
+    if (!sendRaw({ type: 'joker', choice: a })) { jokerErr = 'Pas de connexion, réessaie dans un instant.'; }
+    else { jokerSentAt = Date.now(); try { navigator.vibrate && navigator.vibrate(60); } catch {} }
+  }
+  render();
+});
 
 function renderBoard(){
   const me = st && st.me;

@@ -163,6 +163,41 @@ main{flex:1;position:relative;min-height:0}
 .login input:focus{border-color:var(--gold)}
 .login button{margin-top:14px;width:100%;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:18px;background:var(--red);color:#fff;cursor:pointer}
 .login .e{color:var(--ko);min-height:24px;margin-top:10px;font-weight:700}
+/* ---------- Jokers à traiter (régie) ---------- */
+.jq{position:fixed;right:1.6vw;bottom:calc(1.2vh + 64px);width:min(460px,42vw);max-height:46vh;display:flex;flex-direction:column;background:#1e0e45;border:3px solid var(--gold);border-radius:16px;box-shadow:0 1.6vh 5vh rgba(0,0,0,.55);z-index:15;overflow:hidden}
+.jq[hidden],.regie-off .jq{display:none}
+.jq.pulse{animation:jqpulse .9s ease-out 2}
+@keyframes jqpulse{0%{box-shadow:0 0 0 0 rgba(255,194,60,.75)}100%{box-shadow:0 0 0 22px rgba(255,194,60,0)}}
+.jq-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--plum-2);font-weight:800;font-size:clamp(14px,1.1vw,22px)}
+.jq-head .t{flex:1}
+.jq-head button{border:none;border-radius:8px;padding:7px 10px;font-weight:800;font-size:13px;background:var(--ok);color:var(--night);cursor:pointer;white-space:nowrap}
+.jq-list{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.jq-row{display:flex;align-items:center;gap:10px;background:var(--plum);border-radius:10px;padding:8px 10px}
+.jq-row .ic{font-size:clamp(18px,1.5vw,30px);flex:none}
+.jq-row .tx{flex:1;min-width:0}
+.jq-row .tx b{display:block;font-size:clamp(14px,1.15vw,22px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jq-row .tx span{display:block;color:var(--muted);font-size:clamp(12px,.9vw,17px)}
+.jq-row .tx span em{font-style:normal;font-weight:800;color:var(--gold)}
+.jq-row button{border:none;border-radius:8px;padding:8px 10px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+.jq-row .ok{background:var(--ok);color:var(--night)}
+.jq-row .no{background:transparent;border:2px solid var(--line);color:var(--muted)}
+.jq button:focus-visible{outline:3px solid var(--cream);outline-offset:2px}
+.jstats{background:var(--plum);border-radius:10px;padding:10px 12px;margin-top:12px;line-height:1.6}
+.jstats b{color:var(--gold)}
+.passrow{display:flex;gap:8px}
+.passrow input{flex:1}
+.panel .passrow button{margin:0;flex:none}
+.trow .tn span.jk{display:inline;color:var(--gold);font-weight:700}
+.panel input[type=password]{width:100%;background:var(--plum);border:2px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;outline:none}
+.trow button:disabled{opacity:.35;cursor:default}
+.hrow{display:flex;align-items:center;gap:8px;background:var(--plum);border-radius:8px;padding:7px 10px;font-size:14px}
+.hrow .h{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.hrow .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .c{font-weight:800;flex:none}
+.hrow.cancelled{opacity:.55}
+.hrow.cancelled .c{text-decoration:line-through}
+.hrow button{border:none;background:var(--plum-2);border-radius:7px;padding:5px 8px;font-size:12px;font-weight:700;cursor:pointer}
+
 .offline{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--night);font-weight:800;padding:6px 14px;border-radius:999px;z-index:25;display:none}
 .offline.on{display:block}
 @media (prefers-reduced-motion: reduce){.eq i{animation:none;height:60%}.flash.go{animation:none}}
@@ -228,6 +263,11 @@ main{flex:1;position:relative;min-height:0}
   </div>
 </div>
 
+<div class="jq" id="jq" hidden aria-live="polite">
+  <div class="jq-head"><span class="t" id="jq-title">🃏 Jokers à traiter</span><button id="jq-all" title="Valide tous les +1 en attente">Valider tous les +1</button></div>
+  <div class="jq-list" id="jq-list"></div>
+</div>
+
 <div class="flash" id="flash"></div>
 <div class="offline" id="offline">Connexion au serveur perdue… reconnexion</div>
 <div class="offline" id="toast" style="top:56px;background:var(--ok)"></div>
@@ -248,12 +288,27 @@ main{flex:1;position:relative;min-height:0}
   <button class="btn pri" id="s-save">Enregistrer</button>
   <span id="s-saved" style="color:var(--ok);font-weight:700"></span>
 
+  <h3>Jokers 🃏</h3>
+  <label for="j-pass">Mot de passe joker</label>
+  <div class="passrow"><input type="password" id="j-pass" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Ex. KIFFER"><button class="btn" id="j-show" title="Afficher / masquer (attention si l'écran est projeté)">👁</button></div>
+  <div class="help">Les équipes qui le tapent à l'inscription reçoivent un joker. Majuscules, accents et espaces ne comptent pas. Laisse vide pour cacher la case sur les téléphones. Le changer ne retire pas les jokers déjà donnés.</div>
+  <label class="check"><input type="checkbox" id="j-open"> Jokers utilisables (entre deux extraits)</label>
+  <div class="help">Décoche pour bloquer les jokers, par exemple avant le dernier extrait.</div>
+  <button class="btn pri" id="j-save">Enregistrer</button>
+  <span id="j-saved" style="color:var(--ok);font-weight:700"></span>
+  <div class="jstats" id="j-stats"></div>
+  <button class="btn" id="j-give-all">Donner un joker à toutes les équipes</button>
+  <div class="help">Pour donner ou retirer un joker à une seule équipe : liste des équipes plus bas, boutons +🃏 / −🃏.</div>
+  <label>Qui a utilisé son joker</label>
+  <div class="tlist" id="j-hist"></div>
+
   <h3>Lien des joueurs</h3>
   <div class="url" id="p-url" style="font-size:15px"></div>
   <button class="btn" id="p-copy">Copier le lien</button>
 
   <h3 id="t-title">Équipes</h3>
   <input type="search" id="t-search" placeholder="Rechercher une équipe">
+  <label class="check"><input type="checkbox" id="t-jk"> Seulement les équipes avec un joker (dispo ou utilisé)</label>
   <div class="tlist" id="tlist"></div>
 
   <h3>Résultats</h3>
@@ -268,6 +323,7 @@ main{flex:1;position:relative;min-height:0}
     <kbd>Espace</kbd> lancer l'extrait (buzzers ouverts) → stopper l'extrait<br>
     <kbd>O</kbd> bonne réponse pour l'équipe désignée · <kbd>N</kbd> mauvaise réponse<br>
     <kbd>Retour</kbd> annuler le dernier verdict<br>
+    <kbd>J</kbd> valider le joker en attente le plus ancien<br>
     <kbd>I</kbd> inscription · <kbd>E</kbd> extrait · <kbd>C</kbd> classement<br>
     <kbd>F</kbd> plein écran · <kbd>H</kbd> masquer/afficher la barre de régie
   </div>
@@ -458,7 +514,8 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'e' || k === 'm') act('display', { view: 'round' });
   else if (k === 'c') act('display', { view: 'board' });
   else if (k === 'f') toggleFs();
-  else if (k === 'h') $('#bar').classList.toggle('hide');
+  else if (k === 'h') { $('#bar').classList.toggle('hide'); document.body.classList.toggle('regie-off', $('#bar').classList.contains('hide')); }
+  else if (k === 'j') { const p = st && st.jokers && st.jokers.pending[0]; if (p) act('jokerResolve', { useId: p.id, ok: true }); }
   else if (k === 'escape') $('#panel').classList.remove('on');
 });
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { act('display', { view: b.dataset.view }); b.blur(); }));
@@ -490,7 +547,39 @@ function fillSettings(){
   $('#s-open').checked = st.settings.registrationOpen;
   $('#s-board-hidden').checked = !!st.settings.boardHidden;
   $('#s-saved').textContent = '';
+  $('#j-pass').value = st.settings.jokerPassword || '';
+  $('#j-pass').type = 'password'; $('#j-show').textContent = '👁';
+  $('#j-open').checked = st.settings.jokersOpen !== false;
+  $('#j-saved').textContent = '';
 }
+// ---------- Jokers : réglages ----------
+$('#j-show').addEventListener('click', () => {
+  const i = $('#j-pass'); const show = i.type === 'password';
+  i.type = show ? 'text' : 'password'; $('#j-show').textContent = show ? '🙈' : '👁';
+});
+$('#j-save').addEventListener('click', () => {
+  act('settings', { settings: { jokerPassword: $('#j-pass').value.trim(), jokersOpen: $('#j-open').checked } });
+  $('#j-saved').textContent = 'Enregistré';
+});
+$('#j-give-all').addEventListener('click', () => {
+  if (st && confirm(`Donner un joker de plus à chacune des ${st.teamsCount} équipes ?`)) act('jokerGiveAll');
+});
+// ---------- Jokers : notifications à traiter ----------
+$('#jq').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  e.preventDefault();
+  if (b.id === 'jq-all') { act('jokerResolveAll', { choice: 'plus' }); return; }
+  if (b.dataset.ja) act('jokerResolve', { useId: b.dataset.id, ok: b.dataset.ja === 'ok' });
+});
+$('#j-hist').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('button[data-ja]');
+  if (!b) return;
+  e.preventDefault();
+  const name = b.dataset.name;
+  setTimeout(() => { if (confirm(`Annuler le joker de « ${name} » ? Le +1 éventuel est retiré et l'équipe récupère son joker.`)) act('jokerResolve', { useId: b.dataset.id, ok: false }); }, 0);
+});
+$('#t-jk').addEventListener('change', () => renderTeams(true));
 $('#s-save').addEventListener('click', () => {
   const points = $('#s-points').value.split(/[,;\s]+/).map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
   act('settings', { settings: { title: $('#s-title').value, points, maxPlayers: parseInt($('#s-max').value, 10), registrationOpen: $('#s-open').checked, boardHidden: $('#s-board-hidden').checked } });
@@ -506,6 +595,8 @@ $('#tlist').addEventListener('pointerdown', (e) => {
   e.preventDefault();
   const t = st.board.find((x) => x.teamId === b.dataset.id);
   if (!t) return;
+  if (b.dataset.act === 'jgive') { act('jokerGive', { teamId: t.teamId }); teamsRenderedAt = 0; return; }
+  if (b.dataset.act === 'jtake') { if (t.jokers > 0) act('jokerTake', { teamId: t.teamId }); teamsRenderedAt = 0; return; }
   if (b.dataset.act === 'rename') {
     setTimeout(() => { const n = prompt('Nouveau nom pour « ' + t.name + ' »', t.name); if (n && n.trim()) act('renameTeam', { teamId: t.teamId, name: n }); }, 0);
   } else if (b.dataset.act === 'remove') {
@@ -533,7 +624,8 @@ function render(){
   const labels = { lobby: 'Inscriptions', armed: '🎵 Musique en cours', open: '🎵 Extrait en cours — buzzers ouverts', closed: 'Buzzers fermés' };
   pill.textContent = labels[st.phase];
   pill.className = 'pill ' + st.phase;
-  setHtml($('#count'), `<b>${st.teamsCount}</b> équipe${st.teamsCount > 1 ? 's' : ''} · <b>${st.onlineCount}</b> en ligne${st.settings.boardHidden ? ' · 🙈 classement masqué' : ''}`);
+  const jp = st.jokers ? st.jokers.pending.length : 0;
+  setHtml($('#count'), `<b>${st.teamsCount}</b> équipe${st.teamsCount > 1 ? 's' : ''} · <b>${st.onlineCount}</b> en ligne${st.settings.boardHidden ? ' · 🙈 classement masqué' : ''}${jp ? ` · 🃏 <b>${jp}</b> à traiter` : ''}`);
 
   // Vues
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + st.display));
@@ -554,7 +646,36 @@ function render(){
   renderJoin();
   renderRound();
   renderBoard();
+  renderJokerQueue();
   if (panel.classList.contains('on')) renderTeams(false);
+}
+
+// ---------- Jokers ----------
+const hhmm = (ms) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+let jqCount = 0;
+function renderJokerQueue(){
+  const jq = $('#jq');
+  const pend = (st.jokers && st.jokers.pending) || [];
+  jq.hidden = !pend.length;
+  if (pend.length > jqCount) { jq.classList.remove('pulse'); void jq.offsetWidth; jq.classList.add('pulse'); }
+  jqCount = pend.length;
+  if (!pend.length) return;
+  const plus = pend.filter((u) => u.choice === 'plus').length;
+  $('#jq-title').textContent = `🃏 Joker${pend.length > 1 ? 's' : ''} à traiter (${pend.length})`;
+  $('#jq-all').style.display = plus > 1 ? '' : 'none';
+  setHtml($('#jq-list'), pend.map((u) => u.choice === 'plus'
+    ? `<div class="jq-row"><span class="ic">➕</span><span class="tx"><b>${esc(u.name)}</b><span>a choisi <em>+${st.jokers.bonus}</em> · ${hhmm(u.at)}</span></span><button class="ok" data-ja="ok" data-id="${u.id}">Valider</button><button class="no" data-ja="no" data-id="${u.id}" title="Annule et rend le joker à l'équipe">Annuler</button></div>`
+    : `<div class="jq-row"><span class="ic">🎤</span><span class="tx"><b>${esc(u.name)}</b><span>a choisi <em>Donne ton défi</em> · ${hhmm(u.at)}</span></span><button class="ok" data-ja="ok" data-id="${u.id}" title="Défi entendu : la notif disparaît">OK</button><button class="no" data-ja="no" data-id="${u.id}" title="Annule et rend le joker à l'équipe">Annuler</button></div>`
+  ).join(''));
+}
+function renderJokerPanel(){
+  const j = st.jokers;
+  if (!j) return;
+  const used = j.usedPlus + j.usedDefi;
+  setHtml($('#j-stats'), `<b>${j.holders}</b> équipe${j.holders > 1 ? 's' : ''} avec un joker dispo (${j.available} au total)<br><b>${used}</b> joker${used > 1 ? 's' : ''} utilisé${used > 1 ? 's' : ''} : +1 × ${j.usedPlus} · défi × ${j.usedDefi}${j.pending.length ? `<br><b>${j.pending.length}</b> en attente` : ''}`);
+  setHtml($('#j-hist'), j.history.length
+    ? j.history.map((u) => `<div class="hrow ${u.status}"><span class="h">${hhmm(u.at)}</span><span class="n">${esc(u.name)}</span><span class="c">${u.choice === 'plus' ? '+' + j.bonus : 'Défi'}${u.status === 'cancelled' ? ' (annulé)' : ''}</span>${u.status === 'done' ? `<button data-ja="no" data-id="${u.id}" data-name="${esc(u.name)}">Annuler</button>` : ''}</div>`).join('')
+    : '<div class="help">Aucun joker utilisé pour l\'instant.</div>');
 }
 
 function renderJoin(){
@@ -632,11 +753,22 @@ function renderTeams(force){
   if (!st) return;
   if (!force && performance.now() - teamsRenderedAt < 1500) return;
   teamsRenderedAt = performance.now();
+  renderJokerPanel();
   $('#t-title').textContent = `Équipes (${st.teamsCount})`;
   const q = $('#t-search').value.trim().toLowerCase();
+  const onlyJk = $('#t-jk').checked;
   const list = st.board.filter((x) => !q || x.name.toLowerCase().includes(q) || x.players.join(' ').toLowerCase().includes(q))
+    .filter((x) => !onlyJk || x.jokers > 0 || x.jPlus || x.jDefi || x.jPending)
     .slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  setHtml($('#tlist'), list.slice(0, 400).map((x) => `<div class="trow"><span class="dot ${x.online ? 'on' : ''}" title="${x.online ? 'Connectée' : 'Hors ligne'}"></span><span class="tn"><b>${esc(x.name)}</b><span>${x.points} pts · ${esc(x.players.join(', '))}</span></span><button data-act="rename" data-id="${x.teamId}">Renommer</button><button data-act="remove" data-id="${x.teamId}">Retirer</button></div>`).join('') || '<div class="help">Aucune équipe.</div>');
+  const jkTxt = (x) => {
+    const bits = [];
+    if (x.jokers) bits.push(`🃏 ${x.jokers} dispo`);
+    if (x.jPending) bits.push('🃏 en attente');
+    if (x.jPlus) bits.push(`+1 utilisé${x.jPlus > 1 ? ` ×${x.jPlus}` : ''}`);
+    if (x.jDefi) bits.push(`défi utilisé${x.jDefi > 1 ? ` ×${x.jDefi}` : ''}`);
+    return bits.length ? `<span class="jk">${bits.join(' · ')}</span> · ` : '';
+  };
+  setHtml($('#tlist'), list.slice(0, 400).map((x) => `<div class="trow"><span class="dot ${x.online ? 'on' : ''}" title="${x.online ? 'Connectée' : 'Hors ligne'}"></span><span class="tn"><b>${esc(x.name)}</b><span>${jkTxt(x)}${x.points} pts · ${esc(x.players.join(', '))}</span></span><button data-act="jgive" data-id="${x.teamId}" title="Donner un joker">+🃏</button><button data-act="jtake" data-id="${x.teamId}" title="Retirer un joker"${x.jokers ? '' : ' disabled'}>−🃏</button><button data-act="rename" data-id="${x.teamId}">Renommer</button><button data-act="remove" data-id="${x.teamId}">Retirer</button></div>`).join('') || `<div class="help">${onlyJk ? 'Aucune équipe avec un joker.' : 'Aucune équipe.'}</div>`);
 }
 
 connect();

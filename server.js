@@ -26,6 +26,13 @@ const MAX_TEAMS = parseInt(process.env.MAX_TEAMS || '600', 10);
 const MAX_BUZZ_AGE = 10000; // un buzz envoyé hors connexion reste valable 10 s
 const FUTURE_SLACK = 80;    // un horodatage ne peut pas être dans le futur
 
+// Joker
+const JOKER_BONUS = 1;          // points du choix « +1 »
+const MAX_JOKERS_PER_TEAM = 20; // garde-fou pour le bouton « donner un joker »
+const JOKER_CHOICES = ['plus', 'defi'];
+// Mot de passe joker : majuscules, accents, espaces et ponctuation ne comptent pas
+const normPass = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
 // Horloge serveur monotone (ms)
 const now = () => performance.timeOrigin + performance.now();
 
@@ -46,6 +53,8 @@ const DEFAULT_SETTINGS = {
   maxPlayers: 8,
   registrationOpen: true,
   boardHidden: false, // masque le classement sur les téléphones (finale à l'aveugle)
+  jokerPassword: '',  // vide = pas de case « mot de passe joker » à l'inscription
+  jokersOpen: true,   // les équipes peuvent utiliser leur joker (entre deux extraits)
 };
 
 let game = {
@@ -53,8 +62,9 @@ let game = {
   display: 'join',  // ce que montre l'écran projeté : join | round | board
   roundNo: 0,
   settings: { ...DEFAULT_SETTINGS },
-  teams: {},        // id -> équipe
+  teams: {},        // id -> équipe (team.jokers = jetons encore disponibles)
   rounds: [],       // manches : { no, armedAt, t0, closedAt, entries: { teamId: entrée } }
+  jokerUses: [],    // jokers utilisés : { id, teamId, choice: plus|defi, at, roundNo, status: pending|done|cancelled }
 };
 
 const tokens = new Map(); // token -> teamId
@@ -77,6 +87,9 @@ let saveDirty = false, backupDirty = true;
 
 function applyState(raw) {
   game = { ...game, ...raw, settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) } };
+  // Sauvegardes d'avant le joker : pas de jetons, pas d'historique
+  game.jokerUses = Array.isArray(raw.jokerUses) ? raw.jokerUses : [];
+  for (const t of Object.values(game.teams)) if (!(t.jokers >= 0)) t.jokers = 0;
   if (game.phase === 'armed' || game.phase === 'open') {
     game.phase = 'closed';
     const r = currentRound();
@@ -102,8 +115,11 @@ function restoreFrom(data) {
   if (!data || typeof data !== 'object' || typeof data.teams !== 'object' || !Array.isArray(data.rounds)) throw new Error('Sauvegarde invalide');
   // On garde les équipes inscrites depuis le redémarrage
   const since = Object.values(game.teams).filter((t) => !data.teams[t.id]);
+  const sinceIds = new Set(since.map((t) => t.id));
+  const sinceUses = game.jokerUses.filter((u) => sinceIds.has(u.teamId));
   applyState({ ...data, teams: { ...data.teams } });
   for (const t of since) { game.teams[t.id] = t; if (!t.removed) tokens.set(t.token, t.id); }
+  game.jokerUses.push(...sinceUses);
   restored = true;
   recomputeTotals();
   for (const ws of sockets) ws.lastJson = null;
@@ -140,7 +156,7 @@ function rankedEntries(round) {
 
 function recomputeTotals() {
   totals = new Map();
-  for (const id of Object.keys(game.teams)) totals.set(id, { points: 0, correct: 0, bestTime: null });
+  for (const id of Object.keys(game.teams)) totals.set(id, { points: 0, correct: 0, bestTime: null, bonus: 0 });
   for (const r of game.rounds) {
     for (const e of rankedEntries(r)) {
       if (e.verdict !== 'ok') continue;
@@ -150,6 +166,14 @@ function recomputeTotals() {
       t.correct += 1;
       if (t.bestTime === null || e.reaction < t.bestTime) t.bestTime = e.reaction;
     }
+  }
+  // Joker « +1 » validé par la régie
+  for (const u of game.jokerUses) {
+    if (u.choice !== 'plus' || u.status !== 'done') continue;
+    const t = totals.get(u.teamId);
+    if (!t) continue;
+    t.points += JOKER_BONUS;
+    t.bonus += JOKER_BONUS;
   }
   const list = Object.values(game.teams).filter((t) => !t.removed).map((t) => ({ team: t, ...totals.get(t.id) }));
   list.sort((a, b) =>
@@ -210,8 +234,38 @@ function teamPublic(t) {
   return { id: t.id, name: t.name, players: t.players };
 }
 
+// ---------- Joker : résumé par équipe ----------
+// teamId -> { pending: utilisation en attente, last: dernière utilisation validée, plus, defi }
+function jokerSummary() {
+  const m = new Map();
+  for (const u of game.jokerUses) {
+    let s = m.get(u.teamId);
+    if (!s) { s = { pending: null, last: null, plus: 0, defi: 0 }; m.set(u.teamId, s); }
+    if (u.status === 'pending') s.pending = u;
+    else if (u.status === 'done') { s.last = u; s[u.choice] += 1; }
+  }
+  return m;
+}
+function jokerUsePublic(u) {
+  const t = game.teams[u.teamId];
+  return { id: u.id, teamId: u.teamId, name: t ? t.name : '?', choice: u.choice, status: u.status, at: u.at, roundNo: u.roundNo };
+}
+function jokerScreen() {
+  const live = game.jokerUses.filter((u) => game.teams[u.teamId] && !game.teams[u.teamId].removed);
+  const active = Object.values(game.teams).filter((t) => !t.removed);
+  return {
+    pending: live.filter((u) => u.status === 'pending').map(jokerUsePublic),
+    history: live.filter((u) => u.status !== 'pending').slice(-300).reverse().map(jokerUsePublic),
+    holders: active.filter((t) => t.jokers > 0).length,
+    available: active.reduce((n, t) => n + (t.jokers || 0), 0),
+    usedPlus: live.filter((u) => u.status === 'done' && u.choice === 'plus').length,
+    usedDefi: live.filter((u) => u.status === 'done' && u.choice === 'defi').length,
+    bonus: JOKER_BONUS,
+  };
+}
+
 // État envoyé à l'écran projeté / régie (complet)
-function screenState() {
+function screenState(jk) {
   const r = currentRound();
   const online = onlineTeamIds();
   let entries = [], falseStarts = 0, pending = 0;
@@ -243,12 +297,18 @@ function screenState() {
     entries,
     falseStarts,
     pending,
-    board: board.map((x) => ({
-      rank: x.rank, tied: x.tied, teamId: x.team.id, name: x.team.name,
-      players: x.team.players, points: x.points, correct: x.correct,
-      bestTime: x.bestTime === null ? null : Math.round(x.bestTime),
-      online: online.has(x.team.id),
-    })),
+    board: board.map((x) => {
+      const j = jk.get(x.team.id);
+      return {
+        rank: x.rank, tied: x.tied, teamId: x.team.id, name: x.team.name,
+        players: x.team.players, points: x.points, correct: x.correct,
+        bestTime: x.bestTime === null ? null : Math.round(x.bestTime),
+        online: online.has(x.team.id),
+        jokers: x.team.jokers || 0,
+        jPlus: j ? j.plus : 0, jDefi: j ? j.defi : 0, jPending: !!(j && j.pending),
+      };
+    }),
+    jokers: jokerScreen(),
     recent: active.sort((a, b) => b.createdAt - a.createdAt).slice(0, 14).map((t) => t.name),
     publicUrl: PUBLIC_URL,
     lanUrl: lanUrl(),
@@ -269,6 +329,15 @@ function playerState(teamId, shared) {
   // Classement masqué : ni le top, ni la place de l'équipe ne quittent le serveur.
   // Les points restent visibles, c'est la comparaison qui disparaît.
   const hidden = !!game.settings.boardHidden;
+  // Joker : rien n'est envoyé aux équipes qui n'en ont jamais eu
+  const j = shared.jokers.get(teamId);
+  const joker = (t.jokers > 0 || j) ? {
+    n: t.jokers || 0,
+    open: !!game.settings.jokersOpen,
+    pending: j && j.pending ? j.pending.choice : null,
+    last: j && j.last ? j.last.choice : null,
+    canUse: t.jokers > 0 && !(j && j.pending) && !!game.settings.jokersOpen && game.phase === 'closed',
+  } : null;
   return {
     type: 'state',
     phase: game.phase,
@@ -282,6 +351,7 @@ function playerState(teamId, shared) {
     buzzCount: shared.buzzCount,
     roundTop: shared.roundTop,
     top: hidden ? [] : shared.top,
+    joker,
   };
 }
 
@@ -290,7 +360,9 @@ function broadcast() {
   dirty = false;
   const r = currentRound();
   const ranked = r ? rankedEntries(r) : [];
+  const jk = jokerSummary();
   const shared = {
+    jokers: jk,
     roundId: r ? r.id : null,
     t0: r && r.t0 && r.no === game.roundNo ? r.t0 : null,
     buzzCount: ranked.length,
@@ -300,13 +372,13 @@ function broadcast() {
   let screenJson = null;
   for (const ws of sockets) {
     if (ws.role === 'screen' && ws.isAdmin) {
-      if (!screenJson) screenJson = JSON.stringify(screenState());
+      if (!screenJson) screenJson = JSON.stringify(screenState(jk));
       send(ws, screenJson);
     } else if (ws.role === 'player' && ws.teamId) {
       const json = JSON.stringify(playerState(ws.teamId, shared));
       if (json !== ws.lastJson) { ws.lastJson = json; send(ws, json); }
     } else if (ws.role === 'player' && !ws.teamId) {
-      const json = JSON.stringify({ type: 'lobby', phase: game.phase, title: game.settings.title, registrationOpen: game.settings.registrationOpen, maxPlayers: game.settings.maxPlayers });
+      const json = JSON.stringify({ type: 'lobby', phase: game.phase, title: game.settings.title, registrationOpen: game.settings.registrationOpen, maxPlayers: game.settings.maxPlayers, jokerField: !!normPass(game.settings.jokerPassword) });
       if (json !== ws.lastJson) { ws.lastJson = json; send(ws, json); }
     }
   }
@@ -330,14 +402,39 @@ function register(ws, msg) {
   if (active.length >= MAX_TEAMS) return send(ws, { type: 'error', code: 'full', message: 'Le nombre maximum d\'équipes est atteint.' });
   const players = (Array.isArray(msg.players) ? msg.players : []).map((p) => clean(p, 24)).filter(Boolean).slice(0, game.settings.maxPlayers);
   if (!players.length) return send(ws, { type: 'error', code: 'players', message: 'Ajoute au moins un joueur.' });
-  const team = { id: newId(), token: newToken(), name, players, createdAt: now(), removed: false };
+  // Mot de passe joker facultatif : bon = un jeton, mauvais = tant pis (l'équipe est inscrite quand même)
+  const typed = normPass(String(msg.jokerPassword ?? '').slice(0, 60));
+  const want = normPass(game.settings.jokerPassword);
+  const joker = typed ? (!!want && typed === want) : null; // null = case laissée vide
+  const team = { id: newId(), token: newToken(), name, players, createdAt: now(), removed: false, jokers: joker ? 1 : 0, jokerByPassword: !!joker };
   game.teams[team.id] = team;
   tokens.set(team.token, team.id);
   ws.teamId = team.id;
   ws.lastJson = null;
   recomputeTotals();
   markDirty();
-  send(ws, { type: 'registered', token: team.token, team: teamPublic(team) });
+  send(ws, { type: 'registered', token: team.token, team: teamPublic(team), joker });
+}
+
+// Une équipe utilise un jeton : « +1 » (validé ensuite par la régie) ou « défi »
+function useJoker(ws, msg) {
+  const team = game.teams[ws.teamId];
+  if (!team || team.removed) return;
+  if (!JOKER_CHOICES.includes(msg.choice)) return;
+  const refuse = (message) => send(ws, { type: 'jokerError', message });
+  if (!(team.jokers > 0)) return refuse('Tu n\'as plus de joker.');
+  if (!game.settings.jokersOpen) return refuse('Les jokers sont fermés pour le moment.');
+  if (game.phase !== 'closed') return refuse('Le joker s\'utilise entre deux extraits.');
+  if (game.jokerUses.some((u) => u.teamId === team.id && u.status === 'pending')) return refuse('Ton joker est déjà en attente.');
+  team.jokers -= 1;
+  game.jokerUses.push({ id: newId(), teamId: team.id, choice: msg.choice, at: Date.now(), roundNo: game.roundNo, status: 'pending' });
+  markDirty();
+}
+
+// Rend un jeton à l'équipe (joker annulé, scores remis à zéro…)
+function giveBackJoker(teamId) {
+  const t = game.teams[teamId];
+  if (t) t.jokers = Math.min(MAX_JOKERS_PER_TEAM, (t.jokers || 0) + 1);
 }
 
 // Chrono compté depuis le lancement de l'extrait : tout buzz est valable,
@@ -425,7 +522,50 @@ function adminAction(ws, msg) {
       if (s.maxPlayers) game.settings.maxPlayers = Math.max(1, Math.min(20, parseInt(s.maxPlayers, 10) || 8));
       if (typeof s.registrationOpen === 'boolean') game.settings.registrationOpen = s.registrationOpen;
       if (typeof s.boardHidden === 'boolean') game.settings.boardHidden = s.boardHidden;
+      if (typeof s.jokerPassword === 'string') game.settings.jokerPassword = clean(s.jokerPassword, 40);
+      if (typeof s.jokersOpen === 'boolean') game.settings.jokersOpen = s.jokersOpen;
       recomputeTotals();
+      break;
+    }
+    // ----- Joker -----
+    case 'jokerResolve': { // ok : valider (+1 compté / défi fait) · sinon : annuler et rendre le jeton
+      const u = game.jokerUses.find((x) => x.id === msg.useId);
+      if (!u) return;
+      if (msg.ok) {
+        if (u.status !== 'pending') return;
+        u.status = 'done';
+      } else {
+        if (u.status === 'cancelled') return;
+        u.status = 'cancelled';
+        giveBackJoker(u.teamId);
+      }
+      u.resolvedAt = Date.now();
+      recomputeTotals();
+      break;
+    }
+    case 'jokerResolveAll': { // tout valider d'un coup (filtré par choix si précisé)
+      const choice = JOKER_CHOICES.includes(msg.choice) ? msg.choice : null;
+      for (const u of game.jokerUses) {
+        const t = game.teams[u.teamId];
+        if (u.status === 'pending' && t && !t.removed && (!choice || u.choice === choice)) { u.status = 'done'; u.resolvedAt = Date.now(); }
+      }
+      recomputeTotals();
+      break;
+    }
+    case 'jokerGive': {
+      const t = game.teams[msg.teamId];
+      if (!t || t.removed) return;
+      giveBackJoker(t.id);
+      break;
+    }
+    case 'jokerGiveAll': {
+      for (const t of Object.values(game.teams)) if (!t.removed) giveBackJoker(t.id);
+      break;
+    }
+    case 'jokerTake': {
+      const t = game.teams[msg.teamId];
+      if (!t || !(t.jokers > 0)) return;
+      t.jokers -= 1;
       break;
     }
     case 'renameTeam': {
@@ -444,13 +584,15 @@ function adminAction(ws, msg) {
       recomputeTotals();
       break;
     }
-    case 'resetScores': // garde les équipes, efface les manches
+    case 'resetScores': // garde les équipes, efface les manches ; les jokers utilisés sont rendus
+      for (const u of game.jokerUses) if (u.status !== 'cancelled') giveBackJoker(u.teamId);
+      game.jokerUses = [];
       game.rounds = []; game.roundNo = 0; game.phase = 'lobby'; game.display = 'join';
       recomputeTotals();
       break;
     case 'resetAll': // nouvelle soirée : tout effacer
       for (const s of sockets) if (s.role === 'player' && s.teamId) { send(s, { type: 'kicked' }); s.teamId = null; s.lastJson = null; }
-      game.teams = {}; game.rounds = []; game.roundNo = 0; game.phase = 'lobby'; game.display = 'join';
+      game.teams = {}; game.rounds = []; game.roundNo = 0; game.phase = 'lobby'; game.display = 'join'; game.jokerUses = [];
       tokens.clear();
       recomputeTotals();
       break;
@@ -486,8 +628,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/export.csv') {
       if (!isAdminKey(url.searchParams.get('key'))) { res.writeHead(403); return res.end('Code régie invalide'); }
-      const rows = [['Rang', 'Équipe', 'Points', 'Bonnes réponses', 'Meilleur temps (s)', 'Joueurs']];
-      for (const x of board) rows.push([x.rank, x.team.name, x.points, x.correct, x.bestTime === null ? '' : (x.bestTime / 1000).toFixed(3).replace('.', ','), x.team.players.join(', ')]);
+      const jk = jokerSummary();
+      const rows = [['Rang', 'Équipe', 'Points', 'Bonnes réponses', 'Meilleur temps (s)', 'Bonus joker', 'Défis joker', 'Jokers restants', 'Joueurs']];
+      for (const x of board) {
+        const j = jk.get(x.team.id);
+        rows.push([x.rank, x.team.name, x.points, x.correct, x.bestTime === null ? '' : (x.bestTime / 1000).toFixed(3).replace('.', ','), x.bonus || 0, j ? j.defi : 0, x.team.jokers || 0, x.team.players.join(', ')]);
+      }
       res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="classement-blind-test.csv"' });
       return res.end('﻿' + rows.map((r) => r.map(csvCell).join(';')).join('\n'));
     }
@@ -564,6 +710,7 @@ wss.on('connection', (ws) => {
     if (ws.role === 'player') {
       if (msg.type === 'register' && !ws.teamId) return register(ws, msg);
       if (msg.type === 'buzz' && ws.teamId) return buzz(ws, msg);
+      if (msg.type === 'joker' && ws.teamId) return useJoker(ws, msg);
       if (msg.type === 'logout') { ws.teamId = null; ws.lastJson = null; markDirty(); return; }
     }
     if (ws.role === 'screen' && ws.isAdmin && msg.type === 'admin') return adminAction(ws, msg);

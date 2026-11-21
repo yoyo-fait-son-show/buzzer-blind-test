@@ -105,7 +105,25 @@ Modifiable dans **Réglages → Points selon la rapidité**. Égalité au classe
 
 ---
 
-## 5. Précision des temps
+## 5. Le joker 🃏
+
+**Le mot de passe** : Réglages → Jokers → « Mot de passe joker ». Quand il est rempli, une case facultative apparaît à l'inscription. Bon mot de passe = un joker pour l'équipe ; mauvais = tant pis, l'équipe est inscrite sans joker. Majuscules, accents et espaces ne comptent pas. Tu peux le changer quand tu veux : les jokers déjà donnés restent. Laisse vide pour cacher la case.
+
+**Utilisation** : seulement **entre deux extraits** (buzzers fermés). L'équipe appuie sur « Utiliser mon joker » puis choisit :
+- **+1 point** : une notification arrive sur la régie, le point compte quand tu cliques **Valider** (ou touche **J**). « Valider tous les +1 » traite tout d'un coup.
+- **Donne ton défi** : le joker est consommé tout de suite, l'équipe te dit son défi à voix haute. **OK** ferme la notification.
+
+**Annuler** (sur la notification ou dans l'historique) rend le joker à l'équipe et retire le +1 s'il avait été validé.
+
+**Dans Réglages → Jokers** : décocher « Jokers utilisables » bloque les jokers (ex. avant le dernier extrait), « Donner un joker à toutes les équipes », historique de qui a utilisé son joker. Dans la liste des équipes : **+🃏 / −🃏** pour donner ou retirer un joker à une équipe, et la case « Seulement les équipes avec un joker ».
+
+Les notifications de joker s'affichent au-dessus de la barre de régie, donc **sur l'écran projeté** (touche **H** pour tout masquer). Attention aussi au mot de passe si tu ouvres les Réglages pendant que l'écran est projeté : il est masqué par défaut, le bouton 👁 l'affiche.
+
+Le classement exporté (Excel) indique le bonus joker, les défis et les jokers restants de chaque équipe.
+
+---
+
+## 6. Précision des temps
 
 Chaque téléphone synchronise son horloge avec le serveur et note l'heure exacte de son appui. Une connexion lente ne fait donc pas perdre de temps : c'est le doigt qui compte, pas le réseau.
 
@@ -113,7 +131,7 @@ En test avec une latence 4G irrégulière simulée, l'écart de mesure était d'
 
 ---
 
-## 6. Pendant et après
+## 7. Pendant et après
 
 - **Nom d'équipe déplacé** : Réglages → Équipes → Renommer ou Retirer.
 - **Fermer les inscriptions** : Réglages → décocher « Inscriptions ouvertes ».
@@ -122,7 +140,7 @@ En test avec une latence 4G irrégulière simulée, l'écart de mesure était d'
 - **Un téléphone se verrouille ou recharge la page** : il retrouve son équipe tout seul.
 - **Un joueur s'est inscrit sur le mauvais téléphone** : onglet Classement → « Se déconnecter », puis réinscription.
 
-## 7. Dépannage
+## 8. Dépannage
 
 | Problème | Solution |
 |---|---|
